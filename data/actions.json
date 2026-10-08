@@ -1,0 +1,29 @@
+{
+  "_note": "The four standard Blocksworld operators (the paper assumes them but does not write them out). Every action costs 1. x and y stand for block letters.",
+  "operators": {
+    "pick-up": {
+      "params": ["x"],
+      "pre": [["ontable", "x"], ["clear", "x"], ["handempty"]],
+      "add": [["holding", "x"]],
+      "del": [["ontable", "x"], ["clear", "x"], ["handempty"]]
+    },
+    "put-down": {
+      "params": ["x"],
+      "pre": [["holding", "x"]],
+      "add": [["ontable", "x"], ["clear", "x"], ["handempty"]],
+      "del": [["holding", "x"]]
+    },
+    "stack": {
+      "params": ["x", "y"],
+      "pre": [["holding", "x"], ["clear", "y"]],
+      "add": [["on", "x", "y"], ["clear", "x"], ["handempty"]],
+      "del": [["holding", "x"], ["clear", "y"]]
+    },
+    "unstack": {
+      "params": ["x", "y"],
+      "pre": [["on", "x", "y"], ["clear", "x"], ["handempty"]],
+      "add": [["holding", "x"], ["clear", "y"]],
+      "del": [["on", "x", "y"], ["clear", "x"], ["handempty"]]
+    }
+  }
+}

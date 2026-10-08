@@ -1,0 +1,23 @@
+{
+  "_source": "Freedman & Zilberstein (AAAI-17), Fig. 1 (p. 6). Towers are listed top to bottom.",
+  "towers": [
+    ["H", "T", "E", "R"],
+    ["L", "S", "M", "O"],
+    ["F", "W", "B", "A"]
+  ],
+  "goals": {
+    "HER":    {"cost_one_agent": 6,  "cost_two_agents": 2},
+    "OTHER":  {"cost_one_agent": 16, "cost_two_agents": 6},
+    "BOTHER": {"cost_one_agent": 22, "cost_two_agents": 10},
+    "MOTHER": {"cost_one_agent": 18, "cost_two_agents": 6},
+    "FATHER": {"cost_one_agent": 18, "cost_two_agents": 8},
+    "LATHER": {"cost_one_agent": 18, "cost_two_agents": 8},
+    "MASTER": {"cost_one_agent": 16, "cost_two_agents": 8},
+    "FASTER": {"cost_one_agent": 16, "cost_two_agents": 8},
+    "FOSTER": {"cost_one_agent": 12, "cost_two_agents": 6},
+    "HATER":  {"cost_one_agent": 12, "cost_two_agents": 6},
+    "LATER":  {"cost_one_agent": 12, "cost_two_agents": 6},
+    "WATER":  {"cost_one_agent": 12, "cost_two_agents": 6}
+  },
+  "hidden_goal_in_paper_example": "MASTER"
+}
