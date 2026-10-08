@@ -43,7 +43,12 @@ then `python3 scripts/build_calc_page.py`.
   reproduce 9 of the 12 two-agent costs of Fig. 1; BOTHER, MASTER and FASTER hit the 10-minute optimal-search limit.
   The helper numbers for MASTER match the paper: 8 and 4 steps, H = 4.
 * Our recognition does not reproduce the curves of the paper's Fig. 2 exactly (the paper gives no λ or β, and its
-  plan for MASTER is not printed). FOSTER ties with MASTER and FASTER after action 6.
+  plan for MASTER is not printed). FOSTER ties with MASTER and FASTER after action 6. What I tested (scripts
+  `fig2_variants.py`, `enumerate_plans.py`, `plan_patterns.py`): a weak likelihood (β about 0.05 to 0.3) with a small λ
+  reproduces the *end* of Fig. 2 (a costly goal such as BOTHER takes over for ε = 3 and 6, MASTER collapses); the choice
+  of R_ed's optimal plan does not matter for the *early* features, because over 150 different optimal plans none gives
+  the paper's single leader at t = 4 or its jump at t = 7: our integer costs give exact ties where the paper has graded
+  values, so the paper's likelihood must differ in some way it does not describe.
 * The goal conditions are the "X on Y" pairs and "last letter on the table"; the paper does not say whether the top
   block must also be clear.
 * Independent interaction: R_ed is locked to the plan she would follow alone, nothing is coordinated (no handovers or
