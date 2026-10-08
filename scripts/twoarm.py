@@ -7,6 +7,9 @@ A *joint action* is one time step: arm 1 (R_ed) and arm 2 (R_ing) each do one ac
   one arm acts alone | two arms on different blocks | handover | stacked-pair pick-up | stacked-pair put-down,
   the last two also for a pair whose lower block is on the table.
 
+tidy=True gives every joint step cost 100 and every R_ing action 1, so among the shortest plans R_ing does the fewest actions.
+coupling=False removes the handovers and pair lifts (R_ed does not coordinate with R_ing: independent interaction).
+forced_arm1 does the same for arm 1 (R_ed follows a given plan while arm 2 is free).
 forced_arm2 = list of arm-2 actions ("unstack F W", or None for waiting). It makes arm 2 follow exactly that plan,
 step by step, and wait afterwards; arm 1 is free. That is the problem P_{Red<-Ring} of the paper (Part 12).
 With forced_arm2 = [] arm 2 never acts, which is plain single-arm planning (R_ed alone).
@@ -131,37 +134,39 @@ def _key(op):
     return op.replace("-", "")
 
 
-def domain_pddl(forced_len=None):
+def domain_pddl(forced_len=None, locked_arm=2, coupling=True, tidy=False):
     acts = []
 
-    def emit(name, params, pre, add, dele):
-        eff = " ".join([_pf(f) for f in add] + ["(not " + _pf(f) + ")" for f in dele])
+    def emit(name, params, pre, add, dele, cost=None):
+        eff = " ".join([_pf(f) for f in add] + ["(not " + _pf(f) + ")" for f in dele] + ([f"(increase (total-cost) {cost})"] if tidy else []))
         acts.append(f"  (:action {name}\n    :parameters ({' '.join('?' + p for p in params)})\n"
                     f"    :precondition (and {' '.join(_pf(f) if f[0] != 'raw' else f[1] for f in pre)})\n    :effect (and {eff}))")
 
-    for j in JOINT:
+    for j in (JOINT if coupling else [x for x in JOINT if x['name'].startswith(('one_', 'par_'))]):   # no coupling: no handovers or pair lifts
+        cost = 100 + (1 if 2 in j["comps"] else 0)
         if forced_len is None:
-            emit(j["name"], j["params"], j["pre"], j["add"], j["del"])
+            emit(j["name"], j["params"], j["pre"], j["add"], j["del"], cost)
             continue
-        c2 = j["comps"].get(2)
+        c2 = j["comps"].get(locked_arm)
         if c2 is None:
             emit(j["name"] + "_wait", j["params"] + ["c", "d"], j["pre"] + [("cur", "c"), ("nxt", "c", "d"), ("r2_noop", "c")],
-                 j["add"] + [("cur", "d")], j["del"] + [("cur", "c")])
-            emit(j["name"] + "_after", j["params"], j["pre"] + [("raw", f"(cur s{forced_len})")], j["add"], j["del"])
+                 j["add"] + [("cur", "d")], j["del"] + [("cur", "c")], cost)
+            emit(j["name"] + "_after", j["params"], j["pre"] + [("raw", f"(cur s{forced_len})")], j["add"], j["del"], cost)
         else:
             op, vs = c2
             emit(j["name"], j["params"] + ["c", "d"], j["pre"] + [("cur", "c"), ("nxt", "c", "d"), (f"r2_{_key(op)}", "c", *vs)],
-                 j["add"] + [("cur", "d")], j["del"] + [("cur", "c")])
+                 j["add"] + [("cur", "d")], j["del"] + [("cur", "c")], cost)
     preds = ["(on ?a ?b)", "(ontable ?a)", "(clear ?a)", "(handempty_1)", "(handempty_2)", "(holding_1 ?a)", "(holding_2 ?a)"]
     consts = " ".join(BLOCKS)
     if forced_len is not None:
         preds += ["(cur ?a)", "(nxt ?a ?b)", "(r2_noop ?a)", "(r2_pickup ?a ?b)", "(r2_putdown ?a ?b)", "(r2_stack ?a ?b ?c)", "(r2_unstack ?a ?b ?c)"]
         consts += " " + " ".join(f"s{i}" for i in range(forced_len + 1))
-    return (f"(define (domain two-arms)\n  (:requirements :strips :equality :negative-preconditions)\n  (:constants {consts})\n"
-            f"  (:predicates {' '.join(preds)})\n" + "\n".join(acts) + "\n)\n")
+    extra = "\n  (:functions (total-cost) - number)" if tidy else ""
+    return (f"(define (domain two-arms)\n  (:requirements :strips :equality :negative-preconditions{' :action-costs' if tidy else ''})\n  (:constants {consts})\n"
+            f"  (:predicates {' '.join(preds)}){extra}\n" + "\n".join(acts) + "\n)\n")
 
 
-def problem_pddl(state, goal, forced=None):
+def problem_pddl(state, goal, forced=None, tidy=False):
     init = [f"({' '.join(f)})" for f in sorted(state)]
     if forced is not None:
         n = len(forced)
@@ -174,7 +179,10 @@ def problem_pddl(state, goal, forced=None):
                 op, *args = a.split()
                 init.append(f"(r2_{_key(op)} s{i} {' '.join(args)})")
     goal_s = " ".join(f"({' '.join(g)})" for g in goal)
-    return f"(define (problem p)\n  (:domain two-arms)\n  (:init {' '.join(init)})\n  (:goal (and {goal_s})))\n"
+    if tidy:
+        init.append("(= (total-cost) 0)")
+    metric = "\n  (:metric minimize (total-cost))" if tidy else ""
+    return f"(define (problem p)\n  (:domain two-arms)\n  (:init {' '.join(init)})\n  (:goal (and {goal_s})){metric})\n"
 
 
 def goal_facts(conds):
@@ -187,13 +195,14 @@ def goal_facts(conds):
 
 
 # ---------------------------------------------------------------- solving --------------------------------------------
-def solve(towers, goal_conds, forced_arm2=None, hands=None, time_limit=600, search="astar(lmcut())"):
+def solve(towers, goal_conds, forced_arm2=None, hands=None, time_limit=600, search="astar(lmcut())", forced_arm1=None, coupling=True, tidy=False):
     """Optimal joint plan (A* with LM-cut by default; pass another `search` string for a fast, non-optimal plan). Returns {"cost", "steps": [{name, args, comps, state}], "states": [...]}."""
     OUT.mkdir(exist_ok=True)
     tag = f"two_{os.getpid()}"
     state0 = state_from(towers, hands)
-    forced_len = None if forced_arm2 is None else len(forced_arm2)
-    dom, prob = domain_pddl(forced_len), problem_pddl(state0, goal_facts(goal_conds), forced_arm2)
+    locked_arm, forced = (1, forced_arm1) if forced_arm1 is not None else (2, forced_arm2)
+    forced_len = None if forced is None else len(forced)
+    dom, prob = domain_pddl(forced_len, locked_arm, coupling, tidy), problem_pddl(state0, goal_facts(goal_conds), forced, tidy)
     files = [OUT / f"{tag}_domain.pddl", OUT / f"{tag}_problem.pddl", OUT / f"{tag}.sas", OUT / f"{tag}_plan.txt"]
     files[0].write_text(dom); files[1].write_text(prob); files[3].unlink(missing_ok=True)
     run = subprocess.run([sys.executable, str(FD), "--plan-file", str(files[3]), "--sas-file", str(files[2]), "--search-time-limit", f"{time_limit}s",

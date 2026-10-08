@@ -56,11 +56,13 @@ def stringify(plan):                                   # JSON keys: arms become 
             "steps": [{"comps": {str(k): v for k, v in s["comps"].items()}, "world": {"towers": s["world"]["towers"], "hands": {str(k): v for k, v in s["world"]["hands"].items()}}} for s in plan.get("steps", [])]}
 
 
-def evaluate(key, label, kind, text, pi_ring, extra_rows, plans):
+def evaluate(key, label, kind, text, pi_ring, extra_rows, plans, timeline=None, coupling=True):
     print(f"--- {label}")
-    resp = twoarm.solve(towers, goal, forced_arm2=pi_ring)
+    resp = twoarm.solve(towers, goal, forced_arm2=pi_ring, coupling=coupling)
+    own_timeline = timeline is not None                  # the independent case shows the joint plan itself
     if resp["cost"] is not None:
-        H, H_text, timeline = C - resp["cost"], f"{C} − {resp['cost']} = {C - resp['cost']}", resp
+        H, H_text = C - resp["cost"], f"{C} − {resp['cost']} = {C - resp['cost']}"
+        timeline = timeline if own_timeline else resp
     elif resp.get("reason") == "unsolvable":
         H, H_text, timeline = None, f"{C} − ∞ = −∞", {"cost": None, "steps": arm2_only_steps(pi_ring)}
     else:
@@ -70,26 +72,29 @@ def evaluate(key, label, kind, text, pi_ring, extra_rows, plans):
     rows = extra_rows + [["R_ed alone, from now to her goal G", C, ""],
                          ["R_ed's best response while R_ing follows π_Ring (P_Red←Ring)", resp["cost"] if resp["cost"] is not None else "∞", "no plan exists: R_ed can never finish" if resp["cost"] is None else ""]]
     return {"key": key, "label": label, "kind": kind, "text": text, "pi_ring": pi_ring, "rows": rows, "plans": plans,
-            "response": stringify(resp), "timeline": stringify(timeline), "alone_cost": C, "H": H, "H_text": H_text, "H_is_minus_inf": H is None}
+            "response": stringify(resp), "timeline": stringify(timeline), "timeline_source": "plan0" if own_timeline else "response", "alone_cost": C, "H": H, "H_text": H_text, "H_is_minus_inf": H is None}
 
 
 scenarios = {}
 
-# ---- independent: R_ing builds her own word while R_ed still builds hers ----
-# The optimal joint search for G' + G_hat times out (10 minutes) for these goals, so a fast NON-optimal search finds a valid
-# joint plan instead; R_ed's best response to R_ing's part is still computed optimally.
-FAST = "lazy_greedy([ff()],preferred=[ff()])"
+# ---- independent: R_ing builds her own word by herself while R_ed follows her own plan ----
+# R_ed is locked to the plan she would follow alone (she does not know R_ing exists) and nothing is coordinated: no
+# handovers, no pair lifts. R_ing must reach her goal G' and R_ed her goal G, so R_ing must not break R_ed's plan.
+# Among the shortest joint plans, the one where R_ing does the fewest actions is chosen. This is how I model "R_ing has
+# a personal goal but should avoid preventing R_ed from accomplishing hers" (Definition 3).
+ed_plan = [st["comps"]["1"] for st in helper["alone_G"]["steps"]]
 for g_word in (("HOWL", "WOLF") if which in ("all", "independent") else ()):
     gp = word_conds(g_word)
-    joint = twoarm.solve(towers, gp + g_hat, search=FAST, time_limit=300)
-    print(f"independent {g_word}: joint plan for G' + G_hat (fast, not optimal): cost {joint['cost']} ({joint.get('reason', '')})")
+    joint = twoarm.solve(towers, gp + goal, forced_arm1=ed_plan, coupling=False, tidy=True, time_limit=600)
+    print(f"independent {g_word}: joint plan for G' and G, R_ed following her own plan: cost {joint['cost']} ({joint.get('reason', '')})")
     if joint["cost"] is None:
         continue
-    pi = [s["comps"][2] for s in joint["steps"]]
+    pi = [st["comps"][2] for st in joint["steps"]]
     s = evaluate(f"independent_{g_word}", f"independent: R_ing builds {g_word}", "independent",
-                 f"R_ing has her own goal G′ = {g_word} ({', '.join(gp)}). The joint plan must reach G′ and also leave R_ed able to reach Ĝ_Red; R_ing keeps her half π_Ring.",
-                 pi, [[f"both arms to G′ ({g_word}) and Ĝ_Red (P_Ring, Definition 3)", joint["cost"], "found by a fast search: valid but NOT guaranteed optimal; R_ing's part is π_Ring"]],
-                 [{"title": f"P_Ring: joint plan for G′ = {g_word} and Ĝ_Red (not optimal)", "plan": stringify(joint)}])
+                 f"R_ing has her own goal G′ = {g_word} ({', '.join(gp)}) and plans it <b>by herself</b>. R_ed does not know about R_ing and follows the plan she would follow alone; "
+                 f"R_ing must not break it. (No handovers or pair lifts: nothing is coordinated.)",
+                 pi, [[f"R_ed follows her own plan and R_ing reaches G′ = {g_word}: joint plan", joint["cost"], f"R_ing does {sum(a is not None for a in pi)} actions; the fewest among the shortest plans"]],
+                 [{"title": f"joint plan: R_ed follows her plan, R_ing builds {g_word}", "plan": stringify(joint)}], timeline=joint, coupling=False)
     if s:
         scenarios[s["key"]] = s
 

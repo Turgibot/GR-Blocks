@@ -46,5 +46,9 @@ then `python3 scripts/build_calc_page.py`.
   plan for MASTER is not printed). FOSTER ties with MASTER and FASTER after action 6.
 * The goal conditions are the "X on Y" pairs and "last letter on the table"; the paper does not say whether the top
   block must also be clear.
+* Independent interaction: R_ed is locked to the plan she would follow alone, nothing is coordinated (no handovers or
+  pair lifts), and R_ing plans her own word by herself without breaking R_ed's plan. This is my reading of Definition 3;
+  the paper's centralized formulation would let the planner use R_ed's arm to build R_ing's word, which is not what its
+  own example describes. Only MASTER has independent and adversarial scenarios.
 * In the adversarial case the paper's centralized formulation cannot produce a blocking plan by itself, so the two
   blocking plans the paper describes (hoarding, S on M) are evaluated exactly instead of being found.
