@@ -8,7 +8,6 @@ the saved posteriors are proportional to the likelihoods because the old prior w
    survival(t' | G) = P(cost >= t' | G),  cost = c*(G) - 1 + k,  k ~ positive Poisson(lambda + 1)
 """
 import json
-import math
 import sys
 from pathlib import Path
 
@@ -17,6 +16,8 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "scripts"))
+from survival import survival as _survival
 lam = float(sys.argv[1]) if len(sys.argv) > 1 else 1.0
 EPSILONS = [0, 1, 3, 6]          # the four panels of the paper's Fig. 2
 
@@ -26,25 +27,10 @@ ts = sorted(int(t) for t in saved["posterior"])
 likelihood = {t: saved["posterior"][str(t)] for t in ts}       # proportional to P(O|G)
 
 
-def pmf(x, c):
-    """P(real plan cost = x | G): the paper's shifted positive Poisson."""
-    if x < c:
-        return 0.0
-    k, l = x - c + 1, lam + 1
-    return l ** k / (math.factorial(k) * (math.exp(l) - 1))
-
-
-def survival(tp, c):
-    """P(plan is still running at tp)."""
-    if tp <= c:
-        return 1.0
-    return max(1.0 - sum(pmf(x, c) for x in range(c, tp)), 1e-12)
-
-
 def belief(eps):
     out = {}
     for t in ts:
-        w = {g: likelihood[t][g] * survival(t + eps, cost[g]) for g in cost}
+        w = {g: likelihood[t][g] * _survival(t + eps, cost[g], lam) for g in cost}
         z = sum(w.values())
         out[t] = {g: v / z for g, v in w.items()}
     return out
