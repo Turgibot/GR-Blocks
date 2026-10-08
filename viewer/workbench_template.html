@@ -1,0 +1,407 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Recognition Workbench</title>
+<style>
+  :root{
+    --bg:#eef1f5; --surface:#ffffff; --surface-2:#e3e8ef; --ink:#17212f; --ink-dim:#4a5668; --ink-faint:#7a8596; --grid:#d3dae4;
+    --accent:#2255c4; --accent-soft:#dce6fa; --accent2:#0d7a5f; --accent2-soft:#d5efe6; --warn:#b8322a; --warn-soft:#f6dcd9;
+    --font-serif:'Iowan Old Style','Palatino Linotype',Palatino,'Book Antiqua',Georgia,'STIX Two Math','Cambria Math','Noto Sans Math','DejaVu Serif',serif;
+    --font-mono:ui-monospace,'SF Mono','Cascadia Code',Menlo,Consolas,'Noto Sans Math','DejaVu Sans Mono',monospace;
+  }
+  @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+    --bg:#10151d; --surface:#181f2a; --surface-2:#202a38; --ink:#e8edf4; --ink-dim:#a3afc0; --ink-faint:#6f7c8f; --grid:#2a3443;
+    --accent:#7ea3ff; --accent-soft:#1b2a4d; --accent2:#4cc9a4; --accent2-soft:#11332a; --warn:#ff8f84; --warn-soft:#3b1f1d; } }
+  :root[data-theme="dark"]{
+    --bg:#10151d; --surface:#181f2a; --surface-2:#202a38; --ink:#e8edf4; --ink-dim:#a3afc0; --ink-faint:#6f7c8f; --grid:#2a3443;
+    --accent:#7ea3ff; --accent-soft:#1b2a4d; --accent2:#4cc9a4; --accent2-soft:#11332a; --warn:#ff8f84; --warn-soft:#3b1f1d; }
+  *{ box-sizing:border-box; }
+  body{ margin:0; background:var(--bg); color:var(--ink); font-family:var(--font-serif); line-height:1.45; }
+  header{ position:sticky; top:0; z-index:5; background:var(--surface); border-bottom:1px solid var(--grid); padding:.5rem 1rem; display:flex; flex-wrap:wrap; gap:.45rem 1.2rem; align-items:center; }
+  h1{ font-size:1.05rem; margin:0; font-weight:700; }
+  h2{ font-size:.78rem; font-family:var(--font-mono); letter-spacing:.08em; text-transform:uppercase; color:var(--accent); margin:0 0 .6rem; }
+  label{ font-family:var(--font-mono); font-size:.72rem; color:var(--ink-dim); display:flex; align-items:center; gap:.35rem; }
+  input[type=number], select{ font-family:var(--font-mono); font-size:.78rem; background:var(--bg); color:var(--ink); border:1px solid var(--grid); border-radius:4px; padding:.15rem .3rem; }
+  input[type=number]{ width:4.4rem; }
+  input[type=range]{ width:min(24vw,220px); }
+  button{ font-family:var(--font-mono); font-size:.8rem; background:var(--surface-2); color:var(--ink); border:1px solid var(--grid); border-radius:4px; padding:.15rem .6rem; cursor:pointer; }
+  button:hover{ border-color:var(--accent); }
+  main{ padding:1rem; max-width:1500px; margin:0 auto; }
+  .worldrow{ max-width:1500px; margin:1rem auto 0; padding:0 1rem; display:grid; grid-template-columns:minmax(0,1fr) 300px; gap:1rem; }
+  .worldrow .panel{ margin-bottom:0; }
+  @media (max-width:900px){ .worldrow{ grid-template-columns:1fr; } }
+  .panel{ background:var(--surface); border:1px solid var(--grid); border-radius:8px; padding:.85rem 1rem; margin-bottom:1rem; }
+  .formula{ font-family:var(--font-serif); background:var(--accent-soft); border-left:3px solid var(--accent); padding:.45rem .7rem; border-radius:4px; margin:.2rem 0 .7rem; font-size:.95rem; }
+  .small{ font-size:.82rem; color:var(--ink-dim); }
+  table{ border-collapse:collapse; width:100%; font-family:var(--font-mono); font-size:.74rem; }
+  th{ text-align:left; color:var(--ink-dim); font-weight:600; border-bottom:1px solid var(--grid); padding:.25rem .4rem; background:var(--surface); }
+  td{ padding:.22rem .4rem; border-bottom:1px solid var(--grid); vertical-align:top; }
+  td.num, th.num{ text-align:right; font-variant-numeric:tabular-nums; }
+  tr.sel td{ background:var(--accent-soft); }
+  tr.click{ cursor:pointer; } tr.click:hover td{ background:var(--surface-2); }
+  .bar{ display:inline-block; height:.7rem; background:var(--accent); border-radius:2px; vertical-align:middle; min-width:1px; }
+  .hidden-goal{ color:var(--accent2); font-weight:700; }
+  .tag{ display:inline-block; font-family:var(--font-mono); font-size:.66rem; border-radius:3px; padding:.05rem .35rem; background:var(--surface-2); color:var(--ink-dim); }
+  .ok{ background:var(--accent2-soft); color:var(--accent2); } .bad{ background:var(--warn-soft); color:var(--warn); }
+  ol.plan{ margin:.2rem 0 .5rem; padding-left:1.7rem; font-family:var(--font-mono); font-size:.76rem; }
+  ol.plan li.last{ color:var(--accent); font-weight:700; } ol.plan li.done{ color:var(--ink-faint); } ol.plan li.help{ color:var(--accent2); }
+  ol.plan li.help.last{ font-weight:700; }
+  .twocol{ display:grid; grid-template-columns:1fr 1fr; gap:1rem; } @media (max-width:700px){ .twocol{ grid-template-columns:1fr; } }
+  .calc{ font-family:var(--font-mono); font-size:.78rem; line-height:1.7; }
+  .calc b{ color:var(--accent); }
+  .scroll{ overflow-x:auto; }
+  .banner{ background:var(--accent2-soft); border-left:3px solid var(--accent2); padding:.5rem .8rem; border-radius:4px; margin-bottom:1rem; font-size:.9rem; }
+  footer{ padding:.5rem 1rem 1.5rem; font-family:var(--font-mono); font-size:.72rem; color:var(--ink-dim); text-align:center; }
+  svg text{ font-family:var(--font-mono); fill:currentColor; }
+  .blk rect{ transition:fill .3s, stroke .3s; }
+  .blk.moved1 rect{ fill:var(--accent-soft); stroke:var(--accent); stroke-width:3; }
+  .blk.moved2 rect{ fill:var(--accent2-soft); stroke:var(--accent2); stroke-width:3; }
+  #worldsvg .claw{ stroke-width:3; stroke-linecap:round; fill:none; }
+  #worldsvg .c1{ stroke:var(--accent); } #worldsvg .c2{ stroke:var(--accent2); }
+  .legend{ font-family:var(--font-mono); font-size:.72rem; color:var(--ink-dim); margin-top:.3rem; }
+  .legend .r1{ color:var(--accent); font-weight:700; } .legend .r2{ color:var(--accent2); font-weight:700; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Recognition workbench</h1>
+  <label>R_ed's goal <select id="word"></select></label>
+  <label>scenario <select id="scenario"></select></label>
+  <span><button id="prev" title="left arrow">◀</button> <button id="next" title="right arrow">▶</button></span>
+  <label>step <input type="range" id="slider" min="0" value="0"> <b id="tlabel"></b></label>
+  <button id="play">▶ play</button>
+  <label>speed <select id="speed"><option value="3200">slow</option><option value="1800" selected>normal</option><option value="900">fast</option></select></label>
+  <label>belief <select id="variant"></select></label>
+  <label>β <input type="number" id="beta" step="0.1" min="0"></label>
+  <label>λ <input type="number" id="lam" step="0.1" min="0"></label>
+  <label>τ <input type="number" id="tau" step="0.05" min="0" max="1"></label>
+  <button id="reset">reset to the trace values</button>
+</header>
+<section class="worldrow">
+  <div class="panel"><h2>1 · The world</h2><div id="world"></div><div id="lastaction" class="small"></div><div class="legend" id="legend"></div></div>
+  <div class="panel"><h2 id="planhead">2 · R_ed's plan</h2><div class="small" id="plannote"></div><div id="plan"></div></div>
+</section>
+<main>
+  <div class="banner" id="banner" style="display:none"></div>
+  <div class="panel">
+    <h2>3 · What the planner says for every goal</h2>
+    <div class="formula">P(O|G) = e<sup>−β·c(G+O)</sup> / ( e<sup>−β·c(G+O)</sup> + e<sup>−β·c(G+Ō)</sup> ) &nbsp;&nbsp; prior: P(t′|G), t′ = t + ε &nbsp;&nbsp; P(G|O,t) = P(O|G) · P(t′|G) / Z</div>
+    <div class="small" id="tablenote"></div>
+    <div class="scroll"><table id="goaltable"></table></div>
+  </div>
+  <div class="panel"><h2>4 · One goal in detail <span class="small" id="goalname"></span></h2><div id="detail"></div></div>
+  <div class="panel">
+    <h2>5 · Necessity and the helper's estimated goal</h2>
+    <div class="formula">N(p | O) = Σ<sub>G</sub> P(G|O,t) · 𝟙(p ∈ G) &nbsp;&nbsp; Ĝ<sub>Red</sub> = { p : N(p|O) ≥ τ }</div>
+    <div id="necessity"></div>
+  </div>
+  <div class="panel" id="helperpanel"><h2>6 · R_ing helps (assistive interaction)</h2><div id="helper"></div></div>
+</main>
+<footer id="selfcheck"></footer>
+
+<script>
+const DATA = /*DATA_JSON*/null;
+const $ = id => document.getElementById(id);
+const f = (x, d = 3) => (x === null || x === undefined) ? '∞' : (Math.abs(x) < 1e-3 && x !== 0 ? x.toExponential(1) : x.toFixed(d));
+const ACT = a => a.replace(/^(\S+) (.*)$/, (m, n, r) => n + '(' + r.split(' ').join(',') + ')');
+const movedBlock = a => a.split(' ')[1];
+let META, STEPS, HELPER, SCEN = {}, TL, LAYOUT;
+const state = { word: null, scenario: 'alone', t: 0, variant: 'eps3', beta: 1, lam: 1, tau: 0.3, goal: null };
+
+/* ---------- the statistics, recomputed here from the stored planner costs ---------- */
+function fact(n) { let r = 1; for (let i = 2; i <= n; i++) r *= i; return r; }
+function pmf(x, c, lam) { if (x < c) return 0; const k = x - c + 1, l = lam + 1; return Math.pow(l, k) / (fact(k) * (Math.exp(l) - 1)); }
+function epsOf(variant) { return variant === 'base' ? null : Number(variant.slice(3)); }
+function conflicts(conds) {
+  const P = conds.map(c => { const [n, a] = c.slice(0, -1).split('('); return [c, n, a.split(',')]; }), found = [];
+  for (let i = 0; i < P.length; i++) for (let j = i + 1; j < P.length; j++) {
+    const [c1, n1, a1] = P[i], [c2, n2, a2] = P[j];
+    if (n1 === 'on' && n2 === 'on' && ((a1[1] === a2[1] && a1[0] !== a2[0]) || (a1[0] === a2[0] && a1[1] !== a2[1]))) found.push([c1, c2]);
+    if ((n1 === 'on' && n2 === 'ontable' && a1[0] === a2[0]) || (n2 === 'on' && n1 === 'ontable' && a1[0] === a2[0])) found.push([c1, c2]);
+  }
+  return found;
+}
+function compute(steps, meta, t, variant, beta, lam, tau) {
+  const step = steps[t], eps = epsOf(variant), out = { goals: {}, Z: 0 };
+  for (const w of meta.words) {
+    const g = step.goals[w], cO = g.c_O, cN = g.c_notO, c = meta.goals[w].c_star;
+    let like, eO = null, eN = null, alpha = null;
+    if (t === 0) like = 1;
+    else { eO = cO === null ? 0 : Math.exp(-beta * cO); eN = cN === null ? 0 : Math.exp(-beta * cN); alpha = eO + eN; like = alpha > 0 ? eO / alpha : 0; }
+    const prior = { used: eps !== null, tp: null, terms: [], cum: 0, surv: 1 };
+    if (eps !== null) {
+      prior.tp = t + eps;
+      for (let x = c; x < prior.tp; x++) { const p = pmf(x, c, lam); prior.cum += p; prior.terms.push({ x, k: x - c + 1, p, cum: prior.cum }); }
+      prior.surv = prior.tp <= c ? 1 : Math.max(1 - prior.cum, 1e-12);
+    }
+    const score = like * prior.surv;
+    out.goals[w] = { g, cO, cN, c, like, eO, eN, alpha, prior, score };
+    out.Z += score;
+  }
+  for (const w of meta.words) out.goals[w].post = out.goals[w].score / out.Z;
+  const table = {};
+  for (const w of meta.words) for (const p of meta.goals[w].conditions) (table[p] = table[p] || []).push([w, out.goals[w].post]);
+  out.rows = Object.entries(table).map(([p, v]) => ({ p, contrib: v.sort((a, b) => b[1] - a[1]), N: v.reduce((s, x) => s + x[1], 0) })).sort((a, b) => b.N - a.N);
+  out.rows.forEach(r => r.inG = r.N >= tau - 1e-12);
+  out.ghat = out.rows.filter(r => r.inG).map(r => r.p);
+  out.conflicts = conflicts(out.ghat);
+  return out;
+}
+
+/* ---------- the timeline of a scenario: one entry per step, each with a world and the blocks that moved ---------- */
+function buildTL(scenario) {
+  const S = SCEN[scenario], tl = [], last = scenario === 'alone' ? STEPS.length - 1 : HELPER.t_join;
+  for (let t = 0; t <= last; t++) {
+    const s = STEPS[t];
+    tl.push({ world: { towers: s.world.towers, hands: { 1: s.world.hand, 2: null } }, moves: s.last_action ? [{ arm: 1, block: movedBlock(s.last_action) }] : [],
+              text: s.last_action ? 'R_ed: ' + ACT(s.last_action) : 'start state', traceT: t, phase: 'observe' });
+  }
+  const helpSteps = scenario === 'assistive' ? HELPER.response_G.steps : (S ? S.timeline.steps : []);
+  helpSteps.forEach((st, i) => {
+    const c = st.comps, moves = [];
+    for (const arm of [1, 2]) if (c[arm]) moves.push({ arm, block: movedBlock(c[arm]) });
+    tl.push({ world: { towers: st.world.towers, hands: { 1: st.world.hands['1'], 2: st.world.hands['2'] } }, moves,
+              text: `joint step ${i + 1}:  R_ed: ${c[1] ? ACT(c[1]) : 'waits'}  |  R_ing: ${c[2] ? ACT(c[2]) : 'waits'}`, traceT: HELPER.t_join, phase: 'help', k: i + 1 });
+  });
+  return tl;
+}
+
+/* ---------- the animated world ---------- */
+const BS = 34, SP = 46, BASE = 272, CX = 260, HANDY = 34, FREE_X = [-2, 2, -3, 3, -4, 4, -5, 5];
+function computeLayout(tl) {
+  let slotOf = {}; META.start_towers.forEach((tw, i) => { slotOf[tw[tw.length - 1]] = [-1, 0, 1][i]; });
+  const out = [];
+  tl.forEach((e, t) => {
+    const bottoms = e.world.towers.map(c => c[c.length - 1]), next = {};
+    bottoms.forEach(b => { if (b in slotOf) next[b] = slotOf[b]; });
+    bottoms.slice().sort().forEach(b => { if (!(b in next)) next[b] = FREE_X.find(x => !Object.values(next).includes(x)); });
+    slotOf = next;
+    const pos = {};
+    e.world.towers.forEach(col => col.slice().reverse().forEach((b, k) => { pos[b] = { x: CX + slotOf[col[col.length - 1]] * SP, y: BASE - k * BS - BS / 2 }; }));
+    const held = [1, 2].filter(a => e.world.hands[a]);
+    held.forEach(a => { const b = e.world.hands[a], prev = t > 0 ? out[t - 1][b] : null; pos[b] = { x: prev ? prev.x : CX, y: HANDY }; });
+    if (held.length === 2 && pos[e.world.hands[1]].x === pos[e.world.hands[2]].x) { pos[e.world.hands[1]].x -= 22; pos[e.world.hands[2]].x += 22; }
+    out.push(pos);
+  });
+  return out;
+}
+const W3 = { shown: null, raf: null };
+function buildWorld() {
+  let o = `<svg id="worldsvg" viewBox="0 0 520 300" style="display:block;margin:0 auto;width:100%;max-width:860px;color:var(--ink)" role="img" aria-label="The blocks world, animated">`;
+  o += `<line x1="10" y1="${BASE + 1}" x2="510" y2="${BASE + 1}" stroke="currentColor" stroke-opacity=".4" stroke-width="2"/>`;
+  for (const b of DATA.blocks) o += `<g class="blk" id="blk_${b}"><rect x="${-BS / 2}" y="${-BS / 2}" width="${BS}" height="${BS}" rx="3" fill="var(--surface)" stroke="currentColor" stroke-width="1.4"/><text y="6" text-anchor="middle" font-size="16" font-weight="700">${b}</text></g>`;
+  for (const arm of [1, 2]) o += `<g id="hand${arm}" style="display:none"><path class="claw c${arm}" d="M0 -52 V-31 M-24 -31 H24 M-24 -31 V8 M24 -31 V8"/><text y="-56" text-anchor="middle" font-size="10" style="fill:var(--${arm === 1 ? 'accent' : 'accent2'})">${arm === 1 ? 'R_ed' : 'R_ing'}</text></g>`;
+  return o + '</svg>';
+}
+const place = (b, p) => $('blk_' + b).setAttribute('transform', `translate(${p.x},${p.y})`);
+function snapWorld(i) {
+  if (W3.raf) { cancelAnimationFrame(W3.raf); W3.raf = null; }
+  const e = TL[i], L = LAYOUT[i];
+  for (const b of DATA.blocks) place(b, L[b]);
+  for (const arm of [1, 2]) {
+    const b = e.world.hands[arm], h = $('hand' + arm);
+    h.style.display = b ? '' : 'none';
+    if (b) h.setAttribute('transform', `translate(${L[b].x},${L[b].y})`);
+  }
+  document.querySelectorAll('.blk').forEach(g => g.classList.remove('moved1', 'moved2'));
+  for (const m of e.moves) $('blk_' + m.block).classList.add('moved' + m.arm);
+}
+function showWorld(i) {
+  if (!$('worldsvg')) { $('world').innerHTML = buildWorld(); W3.shown = null; }
+  const prev = W3.shown; W3.shown = i;
+  if (prev === null || Math.abs(i - prev) !== 1) { snapWorld(i); return; }
+  const fwd = i > prev, e = TL[fwd ? i : prev], L0 = LAYOUT[prev], L1 = LAYOUT[i];
+  const moved = DATA.blocks.filter(b => L0[b].x !== L1[b].x || L0[b].y !== L1[b].y);
+  if (!moved.length) { snapWorld(i); return; }
+  if (W3.raf) cancelAnimationFrame(W3.raf);
+  const armOf = {}; for (const m of e.moves) armOf[m.block] = m.arm;
+  const jobs = moved.map(b => {                     // each moving block: lift, carry, lower
+    const p0 = L0[b], p1 = L1[b], pts = [p0];
+    if (p0.y > HANDY + 1) pts.push({ x: p0.x, y: HANDY });
+    if (p1.x !== p0.x) pts.push({ x: p1.x, y: HANDY });
+    pts.push(p1);
+    const path = pts.filter((q, k) => k === 0 || q.x !== pts[k - 1].x || q.y !== pts[k - 1].y);
+    const seg = path.slice(1).map((q, k) => Math.hypot(q.x - path[k].x, q.y - path[k].y));
+    return { b, path, seg, total: seg.reduce((a, c) => a + c, 0) || 1, arm: armOf[b] };
+  });
+  const dur = Math.min(1400, 0.65 * Number($('speed').value)), t0 = performance.now();
+  document.querySelectorAll('.blk').forEach(g => g.classList.remove('moved1', 'moved2'));
+  for (const j of jobs) { if (j.arm) { $('blk_' + j.b).classList.add('moved' + j.arm); $('hand' + j.arm).style.display = ''; } }
+  const step = now => {
+    const u = Math.min(1, (now - t0) / dur), ez = u < .5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2;
+    for (const j of jobs) {
+      let d = ez * j.total, k = 0; while (k < j.seg.length - 1 && d > j.seg[k]) { d -= j.seg[k]; k++; }
+      const fr = j.seg[k] ? Math.min(1, d / j.seg[k]) : 1, q = j.path.length === 1 ? j.path[0] : { x: j.path[k].x + (j.path[k + 1].x - j.path[k].x) * fr, y: j.path[k].y + (j.path[k + 1].y - j.path[k].y) * fr };
+      place(j.b, q); if (j.arm) $('hand' + j.arm).setAttribute('transform', `translate(${q.x},${q.y})`);
+    }
+    if (u < 1) W3.raf = requestAnimationFrame(step); else { W3.raf = null; snapWorld(i); }
+  };
+  W3.raf = requestAnimationFrame(step);
+}
+
+/* ---------- rendering ---------- */
+const listPlan = (plan, mark) => plan.length ? '<ol class="plan">' + plan.map((a, i) => `<li${mark && i + 1 === mark ? ' class="last"' : ''}>${ACT(a)}</li>`).join('') + '</ol>' : '<div class="small">(empty)</div>';
+function render() {
+  const { beta, lam, tau, variant } = state, i = state.t, e = TL[i], t = e.traceT, step = STEPS[t], R = compute(STEPS, META, t, variant, beta, lam, tau), eps = epsOf(variant);
+  $('tlabel').textContent = `${i} of ${TL.length - 1}`; $('slider').max = TL.length - 1; $('slider').value = i;
+  showWorld(i);
+  $('lastaction').innerHTML = i === 0 ? 'Start state: nothing done yet.' : (e.phase === 'observe' ? `Action ${i}: <b>${e.text.replace('R_ed: ', 'R_ed ')}</b>` : `<b>${e.text}</b>`);
+  $('legend').innerHTML = TL.some(x => x.phase === 'help') ? '<span class="r1">■ R_ed</span> &nbsp; <span class="r2">■ R_ing</span> &nbsp; (a held block hangs in its hand; the block that just moved is outlined)' : '<span class="r1">■ R_ed</span> (a held block hangs in her hand; the block that just moved is outlined)';
+  const join = HELPER ? HELPER.t_join : null;
+  if (state.scenario === 'alone') {
+    $('planhead').textContent = "2 · R_ed's plan"; $('plannote').textContent = `The ${META.observed_plan.length} actions R_ed performs for her hidden goal. The recognizer sees only the ones up to the current step.`;
+    $('plan').innerHTML = '<ol class="plan">' + META.observed_plan.map((a, k) => `<li class="${k + 1 === i ? 'last' : (k + 1 < i ? 'done' : '')}">${ACT(a)}</li>`).join('') + '</ol>';
+  } else {
+    $('planhead').textContent = '2 · What happens'; $('plannote').textContent = `R_ed's first ${join} actions, then R_ing joins and the two arms act together.`;
+    $('plan').innerHTML = '<ol class="plan">' + TL.slice(1).map((x, k) => `<li class="${x.phase === 'help' ? 'help' : ''} ${k + 1 === i ? 'last' : (k + 1 < i ? 'done' : '')}" value="${k + 1}">${x.text}</li>`).join('') + '</ol>';
+  }
+  const b = $('banner');
+  if (e.phase === 'help') { b.style.display = ''; b.innerHTML = `R_ing joined after R_ed's action ${join}. The recognition below (panels 3 to 5) is frozen at that moment (step ${join}); panel 6 shows the helper's plan and its calculations.`; }
+  else b.style.display = 'none';
+
+  const maxPost = Math.max(...META.words.map(w => R.goals[w].post));
+  $('tablenote').innerHTML = `After ${t} of R_ed's actions. Costs are the planner's optimal costs (unit cost per action). “∞” means the planner found <b>no plan</b>. Click a row for the details. Belief shown: <b>${variant === 'base' ? 'likelihood only (uniform prior)' : 'with the dynamic prior, ε = ' + eps}</b>, β = ${beta}, λ = ${lam}.`;
+  let h = '<tr><th>goal</th><th class="num">c*(G)</th><th class="num">c(G+O)</th><th class="num">c(G+Ō)</th><th class="num">gap</th><th class="num">P(O|G)</th><th class="num">t′</th><th class="num">P(t′|G)</th><th class="num">P(O|G)·P(t′|G)</th><th class="num">P(G|O,t)</th><th></th></tr>';
+  for (const w of META.words) {
+    const r = R.goals[w], gap = (r.cO === null || r.cN === null) ? '∞' : r.cN - r.cO;
+    h += `<tr class="click ${w === state.goal ? 'sel' : ''}" data-w="${w}"><td class="${w === META.hidden_goal ? 'hidden-goal' : ''}">${w}${w === META.hidden_goal ? ' ★' : ''}</td><td class="num">${r.c}</td><td class="num">${f(r.cO, 0)}</td><td class="num">${f(r.cN, 0)}</td><td class="num">${gap}</td><td class="num">${f(r.like)}</td><td class="num">${r.prior.used ? r.prior.tp : '–'}</td><td class="num">${f(r.prior.surv)}</td><td class="num">${f(r.score)}</td><td class="num"><b>${f(r.post)}</b></td><td><span class="bar" style="width:${Math.round(r.post / (maxPost || 1) * 90)}px"></span></td></tr>`;
+  }
+  h += `<tr><td colspan="8" class="num">Z = Σ P(O|G)·P(t′|G) =</td><td class="num"><b>${f(R.Z)}</b></td><td class="num"><b>${f(META.words.reduce((s, w) => s + R.goals[w].post, 0))}</b></td><td></td></tr>`;
+  $('goaltable').innerHTML = h;
+  $('goaltable').querySelectorAll('tr.click').forEach(tr => tr.onclick = () => { state.goal = tr.dataset.w; render(); });
+
+  const w = state.goal, r = R.goals[w], g = step.goals[w];
+  $('goalname').textContent = '— ' + w + (w === META.hidden_goal ? ' (R_ed’s hidden goal)' : '');
+  let d = '<div class="twocol"><div><b>Plan for G+O</b> <span class="small">(reach ' + w + ' and perform the ' + t + ' observed actions in order)</span>' + (r.cO === null ? '<div class="small">no plan: cost ∞</div>' : `<div class="small">cost ${r.cO}</div>` + listPlan(g.plan_O)) +
+    '</div><div><b>Plan for G+Ō</b> <span class="small">(reach ' + w + ' without performing all of them)</span>' + (r.cN === null ? '<div class="small">no plan: cost ∞ → the observations are unavoidable for this goal</div>' : `<div class="small">cost ${r.cN}</div>` + listPlan(g.plan_notO)) + '</div></div>';
+  d += '<h2 style="margin-top:.6rem">likelihood, step by step</h2><div class="calc">';
+  if (t === 0) d += 'Nothing observed yet, so P(O|G) = 1 for every goal.';
+  else d += `e<sup>−β·c(G+O)</sup> = e<sup>−${beta}·${r.cO === null ? '∞' : r.cO}</sup> = <b>${f(r.eO, 5)}</b><br>e<sup>−β·c(G+Ō)</sup> = e<sup>−${beta}·${r.cN === null ? '∞' : r.cN}</sup> = <b>${f(r.eN, 5)}</b><br>α′ = ${f(r.eO, 5)} + ${f(r.eN, 5)} = <b>${f(r.alpha, 5)}</b><br>P(O|G) = ${f(r.eO, 5)} / ${f(r.alpha, 5)} = <b>${f(r.like, 4)}</b>` +
+    (r.cN === null ? '<br><span class="tag ok">no plan without O: likelihood 1</span>' : (r.cO === r.cN ? '<br><span class="tag">equal costs: likelihood 0.5, the observations neither support nor contradict this goal</span>' : ''));
+  d += '</div><h2 style="margin-top:.6rem">dynamic prior, step by step</h2><div class="calc">';
+  if (!r.prior.used) d += 'Belief “likelihood only”: no prior is applied (survival = 1 for every goal).';
+  else {
+    d += `c*(G) = ${r.c}, &nbsp; t′ = t + ε = ${t} + ${eps} = <b>${r.prior.tp}</b>, &nbsp; λ = ${lam}, so λ+1 = ${f(lam + 1, 2)}, e<sup>λ+1</sup> − 1 = ${f(Math.exp(lam + 1) - 1, 4)}<br>`;
+    if (r.prior.tp <= r.c) d += `t′ ≤ c*(G): the plan cannot have ended yet, so P(t′|G) = <b>1</b> (nothing to subtract).`;
+    else {
+      d += 'P(c(π)=x|G) = (λ+1)<sup>k</sup> / ( k! · (e<sup>λ+1</sup> − 1) ), k = x − c* + 1<div class="scroll"><table style="max-width:560px"><tr><th>x</th><th>k</th><th>(λ+1)<sup>k</sup></th><th>k!</th><th class="num">P(c(π)=x|G)</th><th class="num">running sum</th></tr>';
+      for (const q of r.prior.terms) d += `<tr><td>${q.x}</td><td>${q.k}</td><td>${f(Math.pow(lam + 1, q.k), 3)}</td><td>${fact(q.k)}</td><td class="num">${f(q.p, 4)}</td><td class="num">${f(q.cum, 4)}</td></tr>`;
+      d += `</table></div>P(t′|G) = 1 − ${f(r.prior.cum, 4)} = <b>${f(r.prior.surv, 4)}</b>`;
+    }
+  }
+  d += `</div><h2 style="margin-top:.6rem">posterior</h2><div class="calc">score = P(O|G) · P(t′|G) = ${f(r.like, 4)} · ${f(r.prior.surv, 4)} = <b>${f(r.score, 4)}</b><br>Z = ${f(R.Z, 4)} (sum of the ${META.words.length} scores)<br>P(G|O,t) = ${f(r.score, 4)} / ${f(R.Z, 4)} = <b>${f(r.post, 4)}</b></div>`;
+  $('detail').innerHTML = d;
+
+  let n = `<div class="small">τ = ${tau}. A condition is “X on Y” for a block pair of the goal word, plus the last letter on the table. Each row adds up the posterior of every goal that contains the condition.</div><div class="scroll"><table><tr><th>condition</th><th>goals that contain it, with their P(G|O,t)</th><th class="num">N</th><th>≥ τ ?</th></tr>`;
+  for (const q of R.rows.filter(q => q.N > 1e-4)) n += `<tr><td>${q.p}</td><td>${q.contrib.filter(c => c[1] > 5e-4).map(c => `${c[0]} ${f(c[1], 3)}`).join(' + ')}${q.contrib.some(c => c[1] <= 5e-4) ? ' + …' : ''}</td><td class="num"><b>${f(q.N, 3)}</b></td><td>${q.inG ? '<span class="tag ok">in Ĝ</span>' : ''}</td></tr>`;
+  n += '</table></div>';
+  n += `<p><b>Ĝ<sub>Red</sub></b> = { ${R.ghat.join(', ')} }</p>` + (R.conflicts.length ? `<p><span class="tag bad">conflict</span> ${R.conflicts.map(c => c.join(' vs ')).join('; ')} cannot both be true, so <b>no plan can satisfy Ĝ<sub>Red</sub></b>: R_ing cannot join yet.</p>` : '<p><span class="tag ok">no conflicts</span> a plan can exist, so R_ing can plan to help.</p>');
+  $('necessity').innerHTML = n;
+  renderHelper(e);
+  window.dispatchEvent(new CustomEvent('stepchange', { detail: { t: i, word: state.word, scenario: state.scenario } }));
+}
+
+/* ---------- panel 6: the helper's plan, costs and helpfulness ---------- */
+function jointTable(plan, current) {
+  let h = '<table><tr><th>step</th><th>R_ed (arm 1)</th><th>R_ing (arm 2)</th></tr>';
+  plan.steps.forEach((s, k) => { h += `<tr class="${current === k + 1 ? 'sel' : ''}"><td>${k + 1}</td><td>${s.comps['1'] ? ACT(s.comps['1']) : '<span class="small">waits</span>'}</td><td>${s.comps['2'] ? ACT(s.comps['2']) : '<span class="small">waits</span>'}</td></tr>`; });
+  return h + '</table>';
+}
+function renderScenario(S, e) {
+  const P = $('helperpanel'); P.style.display = '';
+  P.querySelector('h2').textContent = '6 · ' + S.label;
+  const adv = S.kind === 'adversarial';
+  let h = `<div class="formula">${adv ? 'Adversarial (Definition 4): R_ing wants to prevent R_ed from finishing' : 'Independent (Definition 3): G<sub>Ring</sub> = G′ ∪ {success}'} &nbsp;&nbsp; H(π<sub>Ring</sub>) = c(π*<sub>G,≥now</sub>) − c(π<sub>Red←Ring</sub>) (Definition 5)</div>`;
+  h += `<p>R_ing acts from R_ed's action <b>${HELPER.t_join}</b> on. ${S.text}</p>`;
+  h += '<div class="scroll"><table><tr><th>what is planned</th><th class="num">cost (steps)</th><th>note</th></tr>' + S.rows.map(r => `<tr><td>${r[0]}</td><td class="num"><b>${r[1]}</b></td><td class="small">${r[2]}</td></tr>`).join('') + '</table></div>';
+  h += `<p class="calc">H(π<sub>Ring</sub>) = ${S.H_text} &nbsp; ${S.H_is_minus_inf ? '<span class="tag bad">−∞: R_ed can never reach her goal</span>' : (S.H < 0 ? '<span class="tag bad">negative: R_ing made it worse</span>' : (S.H > 0 ? '<span class="tag ok">positive: R_ing helped</span>' : '<span class="tag">zero</span>'))}</p>`;
+  h += `<p class="small">π<sub>Ring</sub>: ${S.pi_ring.map((a, k) => `${k + 1}. ${a ? ACT(a) : 'wait'}`).join(' &nbsp;→&nbsp; ')}</p>`;
+  h += '<div class="twocol">' + S.plans.map(p => `<div><b>${p.title}</b>${jointTable(p.plan, 0)}</div>`).join('');
+  h += S.response.cost !== null ? `<div><b>R_ed's best response while R_ing follows π<sub>Ring</sub></b>${jointTable(S.response, e.phase === 'help' ? e.k : 0)}</div>` : `<div><b>R_ed's best response</b><p class="small">The planner proved that no plan exists, so the cost is infinite. The steps shown in the world are R_ing's actions; R_ed waits.</p>${jointTable(S.timeline, e.phase === 'help' ? e.k : 0)}</div>`;
+  h += '</div>' + (adv ? '<p class="small">The paper’s centralized formulation {¬success, d} is met trivially by everybody doing nothing, so it cannot by itself produce blocking plans; these are the blocking plans the paper describes in §5, and their helpfulness is computed exactly.</p>' : '');
+  $('helper').innerHTML = h;
+}
+function renderHelper(e) {
+  const P = $('helperpanel');
+  if (!HELPER) { P.style.display = 'none'; return; }
+  if (SCEN[state.scenario]) { renderScenario(SCEN[state.scenario], e); return; }
+  P.querySelector('h2').textContent = '6 · R_ing helps (assistive interaction)';
+  P.style.display = '';
+  const H = HELPER, A = H.alone_Ghat, B = H.joint_Ghat, C = H.alone_G, D = H.response_G, paper = META.hidden_goal === 'MASTER';
+  const pi = H.pi_ring.map((a, k) => `${k + 1}. ${a ? ACT(a) : 'wait'}`).join(' &nbsp;→&nbsp; ');
+  let h = `<div class="formula">P<sub>Ring</sub>: goal G<sub>Ring</sub> = Ĝ<sub>Red</sub> (Definition 2) &nbsp;&nbsp; H(π<sub>Ring</sub>) = c(π*<sub>G,≥now</sub>) − c(π<sub>Red←Ring</sub>) (Definition 5)</div>`;
+  h += `<p>R_ing joins after R_ed's action <b>${H.t_join}</b>: the first step at which Ĝ<sub>Red</sub> has no conflicts and something is still unmet. Ĝ<sub>Red</sub> = { ${H.G_hat.join(', ')} }.</p>`;
+  h += `<div class="scroll"><table><tr><th></th><th>what is planned</th><th class="num">cost (steps)</th>${paper ? '<th class="num">paper</th>' : ''}</tr>
+    <tr><td>A</td><td>R_ed alone, from now to Ĝ<sub>Red</sub></td><td class="num"><b>${A.cost}</b></td>${paper ? '<td class="num">8</td>' : ''}</tr>
+    <tr><td>B</td><td>both arms together to Ĝ<sub>Red</sub> = <b>P<sub>Ring</sub></b>; R_ing's part is π<sub>Ring</sub></td><td class="num"><b>${B.cost}</b></td>${paper ? '<td class="num">4</td>' : ''}</tr>
+    <tr><td>C</td><td>R_ed alone, from now to her real goal G = c(π*<sub>G,≥now</sub>)</td><td class="num"><b>${C.cost}</b></td>${paper ? '<td class="num"></td>' : ''}</tr>
+    <tr><td>D</td><td>both arms to G with arm 2 locked to π<sub>Ring</sub> = <b>P<sub>Red←Ring</sub></b> = c(π<sub>Red←Ring</sub>)</td><td class="num"><b>${D.cost}</b></td>${paper ? '<td class="num"></td>' : ''}</tr></table></div>`;
+  h += `<p class="calc">H(π<sub>Ring</sub>) = C − D = ${C.cost} − ${D.cost} = <b>${H.H}</b>${paper ? ' &nbsp; <span class="tag ok">the paper reports H = 4</span>' : ''}</p>`;
+  h += `<p class="small">π<sub>Ring</sub> (R_ing's part of the plan in B): ${pi}</p>`;
+  h += `<div class="twocol"><div><b>B · joint plan to Ĝ<sub>Red</sub></b>${jointTable(B, 0)}</div><div><b>D · the plan that is carried out</b> <span class="small">(R_ed's best response while R_ing follows π<sub>Ring</sub>)</span>${jointTable(D, e.phase === 'help' ? e.k : 0)}</div></div>`;
+  $('helper').innerHTML = h;
+}
+
+/* ---------- loading a goal word and a scenario ---------- */
+function loadWord(word, scenario) {
+  const D = DATA.words[word];
+  state.word = word; META = D.meta; STEPS = D.steps; HELPER = D.helper || null; SCEN = (HELPER && D.scenarios) || {};
+  const sc = $('scenario'); sc.innerHTML = '';
+  sc.add(new Option('R_ed alone', 'alone'));
+  if (HELPER) sc.add(new Option('R_ed + R_ing helping (assistive)', 'assistive'));
+  Object.entries(SCEN).forEach(([k, v]) => sc.add(new Option(v.label, k)));
+  state.scenario = (HELPER && scenario === 'assistive') || SCEN[scenario] ? scenario : 'alone'; sc.value = state.scenario;
+  TL = buildTL(state.scenario); LAYOUT = computeLayout(TL);
+  state.t = 0; state.goal = META.hidden_goal;
+  const vs = $('variant'), cur = state.variant; vs.innerHTML = '';
+  [['base', 'likelihood only'], ...META.epsilons.map(e => ['eps' + e, 'prior, ε = ' + e])].forEach(([v, l]) => vs.add(new Option(l, v)));
+  vs.value = [...vs.options].some(o => o.value === cur) ? cur : 'eps3'; state.variant = vs.value;
+  W3.shown = null; stopPlay(); render();
+}
+function setStep(t) { state.t = Math.max(0, Math.min(TL.length - 1, Math.round(t))); render(); }
+function setScenario(s) { loadWord(state.word, s); }
+window.calcViewer = { setStep, getStep: () => state.t, setWord: w => loadWord(w, state.scenario), setScenario, state };
+
+/* ---------- controls ---------- */
+let timer = null;
+function stopPlay() { if (timer) { clearInterval(timer); timer = null; } $('play').textContent = '▶ play'; }
+$('play').onclick = () => {
+  if (timer) { stopPlay(); return; }
+  if (state.t >= TL.length - 1) setStep(0);
+  $('play').textContent = '⏸ pause';
+  timer = setInterval(() => { if (state.t >= TL.length - 1) { stopPlay(); return; } setStep(state.t + 1); }, Number($('speed').value));
+};
+$('speed').onchange = () => { if (timer) { stopPlay(); $('play').onclick(); } };
+$('slider').oninput = e => setStep(+e.target.value);
+$('prev').onclick = () => setStep(state.t - 1); $('next').onclick = () => setStep(state.t + 1);
+$('variant').onchange = e => { state.variant = e.target.value; render(); };
+$('word').onchange = e => loadWord(e.target.value, state.scenario);
+$('scenario').onchange = e => setScenario(e.target.value);
+for (const k of ['beta', 'lam', 'tau']) $(k).onchange = e => { const v = parseFloat(e.target.value); if (!isNaN(v)) { state[k] = v; render(); } };
+$('reset').onclick = () => { state.beta = META.beta; state.lam = META.lambda; state.tau = META.tau; for (const k of ['beta', 'lam', 'tau']) $(k).value = state[k]; render(); };
+window.addEventListener('keydown', e => { if (['INPUT', 'SELECT'].includes(e.target.tagName)) return; if (e.key === 'ArrowRight') setStep(state.t + 1); if (e.key === 'ArrowLeft') setStep(state.t - 1); });
+
+/* ---------- start, and the self-check: the numbers computed here must equal the ones Python stored ---------- */
+DATA.order.forEach(w => $('word').add(new Option(`${w}  (${DATA.words[w].meta.observed_plan.length} actions)`, w)));
+$('word').value = DATA.default;
+{
+  const m = DATA.words[DATA.default].meta; state.beta = m.beta; state.lam = m.lambda; state.tau = m.tau;
+  for (const k of ['beta', 'lam', 'tau']) $(k).value = state[k];
+}
+let worst = 0, worstN = 0, nChecks = 0;
+for (const w of DATA.order) {
+  const D = DATA.words[w], m = D.meta;
+  for (let t = 0; t < D.steps.length; t++) for (const v of ['base', ...m.epsilons.map(e => 'eps' + e)]) {
+    const R = compute(D.steps, m, t, v, m.beta, m.lambda, m.tau), P = D.steps[t].posterior[v], N = D.steps[t].necessity[v].N;
+    for (const x of m.words) worst = Math.max(worst, Math.abs(R.goals[x].post - P[x]));
+    for (const row of R.rows) if (N[row.p] !== undefined) worstN = Math.max(worstN, Math.abs(row.N - N[row.p]));
+    nChecks++;
+  }
+}
+$('selfcheck').innerHTML = `Self-check against the Python traces (${DATA.order.length} goal words, ${nChecks} step/belief combinations): largest difference in P(G|O,t) = ${worst.toExponential(1)}, in N(p|O) = ${worstN.toExponential(1)} ${worst < 1e-9 && worstN < 1e-9 ? '✓' : '✗ MISMATCH'}<br>Arrow keys step through time · calcViewer.setStep(t) / setWord(w) / setScenario(s) drive the page from outside`;
+loadWord(DATA.default, 'alone');
+</script>
+</body>
+</html>

@@ -7,6 +7,7 @@ usage: python3 scripts/compile_observations.py [WORD] ["action a b, action c, ..
 """
 import itertools
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -81,6 +82,7 @@ def write_pddl(actions, allow_complete):
 
 
 def solve(tag, allow_complete):
+    tag = f"{tag}_{os.getpid()}"                   # per-process file names, so several runs can go in parallel
     actions = compile_problem(allow_complete)
     dom, prob = write_pddl(actions, allow_complete)
     OUT.mkdir(exist_ok=True)
@@ -91,10 +93,15 @@ def solve(tag, allow_complete):
     subprocess.run(["python3", str(FD), "--plan-file", str(plan_file), "--sas-file", str(OUT / f"obs_{tag}.sas"),
                     str(OUT / f"obs_domain_{tag}.pddl"), str(OUT / f"obs_problem_{tag}.pddl"),
                     "--search", "astar(lmcut())"], capture_output=True, text=True)
+    files = [OUT / f"obs_domain_{tag}.pddl", OUT / f"obs_problem_{tag}.pddl", OUT / f"obs_{tag}.sas"]
     if not plan_file.exists():
+        for f in files:
+            f.unlink(missing_ok=True)
         return None, actions
     names = {a[0].lower(): a[0] for a in actions}
     steps = [names[ln.strip("() \n")] for ln in plan_file.read_text().splitlines() if ln.startswith("(")]
+    for f in files + [plan_file]:
+        f.unlink(missing_ok=True)
     return [s.split("_at")[0].replace("_", " ") for s in steps], actions
 
 
