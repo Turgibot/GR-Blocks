@@ -226,10 +226,10 @@ function computeLayout(tl) {
 }
 const W3 = { shown: null, raf: null };
 function buildWorld() {
-  let o = `<svg id="worldsvg" viewBox="0 0 520 300" style="display:block;margin:0 auto;width:100%;max-width:860px;color:var(--ink)" role="img" aria-label="The blocks world, animated">`;
+  let o = `<svg id="worldsvg" viewBox="0 -36 520 336" style="display:block;margin:0 auto;width:100%;max-width:860px;color:var(--ink);overflow:visible" role="img" aria-label="The blocks world, animated">`;
   o += `<line x1="10" y1="${BASE + 1}" x2="510" y2="${BASE + 1}" stroke="currentColor" stroke-opacity=".4" stroke-width="2"/>`;
   for (const b of DATA.blocks) o += `<g class="blk" id="blk_${b}"><rect x="${-BS / 2}" y="${-BS / 2}" width="${BS}" height="${BS}" rx="3" fill="var(--surface)" stroke="currentColor" stroke-width="1.4"/><text y="6" text-anchor="middle" font-size="16" font-weight="700">${b}</text></g>`;
-  for (const arm of [1, 2]) o += `<g id="hand${arm}" style="display:none"><path class="claw c${arm}" d="M0 -52 V-31 M-24 -31 H24 M-24 -31 V8 M24 -31 V8"/><text y="-56" text-anchor="middle" font-size="10" style="fill:var(--${arm === 1 ? 'accent' : 'accent2'})">${arm === 1 ? 'R_ed' : 'R_ing'}</text></g>`;
+  for (const arm of [1, 2]) o += `<g id="hand${arm}" style="display:none"><path class="claw c${arm}" d="M0 -52 V-31 M-24 -31 H24 M-24 -31 V8 M24 -31 V8"/><text y="-58" text-anchor="middle" font-size="13" font-weight="700" style="fill:var(--${arm === 1 ? 'accent' : 'accent2'})">${arm === 1 ? 'R_ed' : 'R_ing'}</text></g>`;
   return o + '</svg>';
 }
 const place = (b, p) => $('blk_' + b).setAttribute('transform', `translate(${p.x},${p.y})`);
