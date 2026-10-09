@@ -427,7 +427,7 @@ const TOUR_WALK = {
       <p>Every move <b>costs 1</b>, so the cost of a plan is simply its number of moves.</p>` },
     { target: '#plan', title: "R_ed's plan", html: `<p>R_ed wants to build a tower that spells a word from top to bottom. Hers spells <b>MASTER</b>: M on A on S on T on E on R, with R on the table.</p>
       <p>These are the 16 moves of her cheapest plan, found by a planner (Fast Downward). The paper assumes R_ed is <b>rational</b>: she does not waste moves, so she follows a cheapest plan.</p>
-      <p>Her goal is <b>hidden</b>: R_ing sees only her moves, never the word. (The ★ in the tables later marks her real goal; the observer does not know it.)</p>` },
+      <p>Her goal (the word she is building) is <b>hidden</b>: R_ing sees only her moves, never the goal itself. (The ★ in the tables later marks her real goal; the observer does not know it.)</p>` },
     { target: '#next', title: 'Try it: her first move', wait: () => state.t === 1, hint: 'Click the ▶ button in the top bar once: R_ed makes her first move.', auto: () => calcViewer.setStep(1),
       html: `<p>Time to let R_ed work. Click the <b>▶</b> button.</p>` },
     { target: '#world', title: 'The first observation', state: { t: 1 }, html: `<p>R_ed did <code>unstack(H,T)</code>: H is lifted off T and is in her hand. (In panel 2, that move is now highlighted.)</p>
