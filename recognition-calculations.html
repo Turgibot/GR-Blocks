@@ -143,7 +143,7 @@
       <span class="cap">“Before weighing the moves: how plausible is it that a plan for G is still running after t′ steps?” A goal whose cheapest plan is short should already be finished by now, so it loses weight; long goals stay plausible. ε looks a few steps ahead.</span></div>
     <div class="formula"><b>3 · Posterior (the belief)</b> &nbsp; P(G|O,t) = P(O|G) · P(t′|G) / Z
       <span class="cap">Bayes' rule: belief ∝ likelihood × prior. Z is the sum of (likelihood × prior) over all 12 goals; dividing by it makes the 12 beliefs add up to 1.</span></div>
-    <details class="explain" open><summary>What do the symbols mean? (click to fold)</summary><dl>
+    <details class="explain"><summary>What do the symbols mean? (click to open)</summary><dl>
       <dt>G</dt><dd>A candidate goal: one of the 12 words R_ed might be building.</dd>
       <dt>O, t</dt><dd>O is the list of R_ed's moves seen so far, in order; t is how many (the “step”).</dd>
       <dt>c(G+O)</dt><dd>Number of moves of the cheapest plan that reaches G <i>and</i> performs all of O in order.</dd>
@@ -431,7 +431,7 @@ function renderScenario(S, e) {
   h += '</div>' + (adv ? '<p class="small">The paper’s centralized formulation {¬success, d} is met trivially by everybody doing nothing, so it cannot by itself produce blocking plans; these are the blocking plans the paper describes in §5, and their helpfulness is computed exactly.</p>' : '');
   $('helper').innerHTML = h;
 }
-const GLOSS_HELP = `<details class="explain" open><summary>What do these terms mean? (click to fold)</summary><dl>
+const GLOSS_HELP = `<details class="explain"><summary>What do these terms mean? (click to open)</summary><dl>
   <dt>Ĝ<sub>Red</sub></dt><dd>The goal conditions R_ing believes R_ed needs (from panel 5).</dd>
   <dt>P<sub>Ring</sub></dt><dd>R_ing's planning problem: both arms may act, starting from now, and the goal is Ĝ<sub>Red</sub> (for the assistive case). The planner finds the cheapest joint plan.</dd>
   <dt>π<sub>Ring</sub></dt><dd>R_ing's own half of that joint plan. It is all R_ing can do: it cannot tell R_ed what to do, so R_ed's half is not known to her.</dd>
