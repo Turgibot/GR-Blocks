@@ -106,15 +106,15 @@
   <span class="dropdown"><button id="tutbtn" aria-haspopup="true" aria-expanded="false">Tutorials ▾</button><div id="tutmenu" class="menu" hidden></div></span>
   <label>R_ed's goal <select id="word"></select></label>
   <label>scenario <select id="scenario"></select></label>
-  <span><button id="prev" title="left arrow">◀</button> <button id="next" title="right arrow">▶</button></span>
+  <span id="stepctl"><button id="prev" title="left arrow">◀</button> <button id="next" title="right arrow">▶</button></span>
   <label>step <input type="range" id="slider" min="0" value="0"> <b id="tlabel"></b></label>
-  <button id="play">▶ play</button>
-  <label>speed <select id="speed"><option value="3200">slow</option><option value="1800" selected>normal</option><option value="900">fast</option></select></label>
+  <span id="playctl"><button id="play">▶ play</button>
+  <label style="display:inline-flex">speed <select id="speed"><option value="3200">slow</option><option value="1800" selected>normal</option><option value="900">fast</option></select></label></span>
   <label>belief <select id="variant"></select></label>
-  <label>β <input type="number" id="beta" step="0.1" min="0"></label>
+  <span id="params" style="display:inline-flex;flex-wrap:wrap;gap:.45rem 1.2rem;align-items:center"><label>β <input type="number" id="beta" step="0.1" min="0"></label>
   <label>λ <input type="number" id="lam" step="0.1" min="0"></label>
   <label>τ <input type="number" id="tau" step="0.05" min="0" max="1"></label>
-  <button id="reset">reset to the trace values</button>
+  <button id="reset">reset to the trace values</button></span>
 </header>
 <div id="wslot"><section class="worldrow">
   <div class="panel"><h2>1 · The world</h2><div id="world"></div><div id="lastaction" class="small"></div><div class="legend" id="legend"></div></div>
@@ -426,7 +426,7 @@ window.addEventListener('keydown', e => { if (['INPUT', 'SELECT'].includes(e.tar
 /* ---------- tutorials: guided overlays ("walk me") ---------- */
 const TUT_BASE = { word: 'MASTER', scenario: 'alone', t: 0, goal: 'MASTER', variant: 'eps3' };
 const TOUR_WALK = {
-  id: 'walk', title: 'Walk me through the experiment', blurb: 'The whole story, from the blocks to the helper robot. About 15 minutes.',
+  id: 'walk', title: 'The running example: MASTER', blurb: 'One experiment from the first move to the helper robot, with every number. About 15 minutes.',
   steps: [
     { title: 'Welcome', html: `<p>This walk-through follows the experiment of the AAAI-17 paper <i>Integration of Planning with Recognition for Responsive Interaction Using Classical Planners</i>.</p>
       <p><b>The story:</b> a robot, <b>R_ed</b>, is building a tower of lettered blocks. A second robot, <b>R_ing</b>, only <i>watches</i> her. R_ing does not know which word she is building. It has to work that out from her moves <i>while she is still working</i>, and then decide how to help.</p>
@@ -494,7 +494,47 @@ const TOUR_WALK = {
       <p><b>Things to try:</b> choose another goal for R_ed in the top bar (with FOSTER the helper guesses wrong and H = −6); the <i>scenario</i> menu (independent and adversarial interaction); change β, λ, τ and ε and watch the numbers move.</p>` },
   ]
 };
-const TUTORIALS = [TOUR_WALK];
+
+const TOUR_DASH = {
+  id: 'dash', title: 'A tour of the dashboard', blurb: 'Where everything is and what each control and panel shows. About 5 minutes.',
+  steps: [
+    { title: 'Welcome', html: `<p>This page is a <b>workbench</b>: a top bar of controls and six numbered panels. Everything you see is recomputed live from the planner's costs, so you can change a control and watch every number follow.</p>
+      <p>This tour only shows <b>where things are and what they mean</b>. The second tutorial, <i>the running example</i>, then follows one experiment from start to end with the real numbers.</p>
+      <p>Click <b>Next ▶</b> to go on (or press → / Enter); <span class="k">Esc</span> closes the tour.</p>` },
+    { target: 'label:has(#word)', title: "Top bar · R_ed's goal", html: `<p>R_ed is the robot that is building a tower. This menu chooses <b>which of the 12 words she is secretly building</b>. Changing it replays the whole experiment for that word: her plan, what R_ing sees, and every number below.</p>
+      <p>The observer (R_ing) never gets to see this choice. It exists on the page so that <i>we</i> can check whether the recognition guesses right.</p>` },
+    { target: 'label:has(#scenario)', title: 'Top bar · scenario', html: `<p>What happens <b>after</b> R_ing has recognised her goal:</p>
+      <ul><li><b>R_ed alone</b>: only the recognition, nobody helps.</li><li><b>assistive</b>: R_ing joins and helps build R_ed's word.</li><li><b>independent</b>: R_ing builds a word of its own, without disturbing R_ed.</li><li><b>adversarial</b>: R_ing works against R_ed, building something that blocks her.</li></ul>
+      <p>Only the combinations that were actually computed appear in the menu: assistive exists for 9 of the words; independent and adversarial for MASTER.</p>` },
+    { target: '#stepctl', title: 'Top bar · stepping through time', wait: () => state.t >= 1, hint: 'Click the ▶ button once.', auto: () => calcViewer.setStep(1),
+      html: `<p>The experiment unfolds in <b>steps</b>. Step <i>t</i> means “R_ing has seen the first <i>t</i> moves of R_ed”. ◀ and ▶ go one step back or forward (the arrow keys on your keyboard do the same).</p><p>Press ▶ now and watch the world.</p>` },
+    { target: 'label:has(#slider)', title: 'Top bar · the time slider', html: `<p>The slider is the same control as ◀ ▶, but you can jump anywhere. The label shows the step and how many steps there are (for example <b>6 / 16</b>).</p>
+      <p>For the assistive scenario the timeline is longer: first the steps where R_ing only <i>watches</i>, then the joint steps in which both robots move.</p>` },
+    { target: '#playctl', title: 'Top bar · play and speed', html: `<p><b>▶ play</b> steps forward on its own, animating each move; pressing it again pauses. <b>speed</b> sets how long each move takes (slow, normal, fast).</p>` },
+    { target: 'label:has(#variant)', title: 'Top bar · which belief', html: `<p>The recogniser can use different <b>priors</b> (how likely each goal is <i>before</i> looking at the moves). This menu chooses which belief the tables show:</p>
+      <ul><li><b>base</b>: no prior at all, all goals equal, only the evidence counts.</li><li><b>prior, ε = 0, 1, 3, 6</b>: adds the survival-analysis prior, looking ε moves ahead (the paper's “foresight”).</li></ul>
+      <p>The page opens at ε = 3, as in the paper's example.</p>` },
+    { target: '#params', title: 'Top bar · β, λ, τ and reset', html: `<p>Three numbers that the paper leaves for you to choose:</p>
+      <ul><li><b>β</b>: how strictly R_ed is assumed to be rational (used in the likelihood).</li><li><b>λ</b>: the shape of the prior over plan lengths.</li><li><b>τ</b>: the necessity threshold, how sure R_ing must be that a fact is needed before it works on it.</li></ul>
+      <p>Change any of them and every table updates immediately. <b>reset</b> puts back the values the planner traces were made with (β = 1, λ = 1, τ = 0.3).</p>` },
+    { target: '.panel:has(#world)', title: 'Panel 1 · the world', state: { t: 6 }, html: `<p>The blocks world, animated. Each tower is read from top to bottom. The hand of R_ed (blue) lifts and carries blocks; when R_ing joins, a second hand (green) appears.</p>
+      <p>Below the picture: the move that was just made, and a legend. The block that just moved is outlined.</p>` },
+    { target: '.panel:has(#plan)', title: "Panel 2 · R_ed's plan", state: { t: 6 }, html: `<p>R_ed's complete plan, one move per line. Moves that have already been seen are greyed, the <b>latest</b> one is bold. Remember: the observer only sees what is greyed; the rest is the future.</p>
+      <p>In the assistive scenario this panel continues with the <b>joint steps</b>, in green, after R_ing has joined.</p>` },
+    { target: '.panel:has(#goaltable)', title: 'Panel 3 · every candidate goal', state: { t: 6 }, html: `<p>The heart of the recogniser: one row per candidate word. For each, the planner is asked two questions and the answers are turned into a belief. The formula bar shows the three equations that are used; the notes under it explain this step's numbers.</p>` },
+    { target: '#goaltable', title: 'Panel 3 · the columns', state: { t: 6 }, html: `<p>Reading the columns left to right:</p>
+      <ul><li><b>c*(G)</b>: cheapest plan for the goal from the start.</li><li><b>c(G+O)</b>, <b>c(G+Ō)</b>: cheapest plan <i>with</i> / <i>without</i> the observed moves.</li><li><b>gap</b>: the difference between those two costs.</li><li><b>P(O|G)</b>: likelihood from the gap.</li><li><b>t′</b>, <b>P(t′|G)</b>: the prior look-ahead and its value.</li><li><b>P(O|G)·P(t′|G)</b>: the score; the last column is the final belief <b>P(G|O,t)</b> after dividing by the sum of all scores.</li></ul>
+      <p><b>Click a row</b> to study that goal in panel 4. The ★ marks R_ed's real goal.</p>` },
+    { target: '.panel:has(#detail)', title: 'Panel 4 · one goal in detail', state: { t: 6, goal: 'HER' }, html: `<p>All the intermediate work for the goal you clicked in panel 3 (here HER): the two plans, the cost comparison, the likelihood arithmetic, and the prior calculation with its table of Poisson values. Nothing is hidden: every number in panel 3 can be re-derived here.</p>` },
+    { target: '.panel:has(#necessity)', title: 'Panel 5 · necessity', state: { t: 6, goal: 'MASTER' }, html: `<p>From beliefs about <i>goals</i> to facts about <i>what must be built</i>. Each row is a condition such as “S on T”, with N = the total belief of all goals that need it. Conditions at or above τ form the helper's estimated goal Ĝ<sub>Red</sub>, and rows that cannot hold at the same time are listed as <b>conflicts</b>.</p>` },
+    { target: '#helperpanel', title: 'Panel 6 · the helper', state: { scenario: 'assistive', t: 7 }, html: `<p>Appears when R_ing joins (assistive scenario; the other scenarios show their own version of this panel). It lists R_ing's plan and the joint plan with the planner's costs, and the <b>helpfulness H</b>: how many steps R_ing's contribution saves.</p>
+      <p>The table of joint steps shows what each arm does at every step.</p>` },
+    { target: '#selfcheck', title: 'The footer · the self-check', html: `<p>This page does not just show numbers, it also <b>checks itself</b>: when it loads, every belief and necessity is recomputed in JavaScript and compared with the values Python stored with the planner results. The largest difference is shown here (about 10<sup>−15</sup>, so equal up to rounding).</p>` },
+    { title: 'Scrolling', html: `<p>One more thing: scroll down and panels 1 and 2 <b>shrink to the left third</b> of the screen so the world and the plan stay in sight while you read panels 3–6. They return when you scroll back up. (On narrow screens they stay in place.)</p>
+      <p>That is the whole dashboard. Next: open <b>Tutorials ▾ → The running example</b> to see what all of this does in one real experiment.</p>` },
+  ]
+};
+const TUTORIALS = [TOUR_DASH, TOUR_WALK];
 let TOUR = null;                                           // the running tour, or null
 
 function tourEffective(tut) {                              // the page state each step needs (inherited from the step before)
@@ -523,6 +563,7 @@ function tourStart(id) {
   window.addEventListener('resize', tourLayout); window.addEventListener('scroll', tourLayout, true); window.addEventListener('keydown', tourKey, true);
   window.addEventListener('stepchange', tourCheckWait);
   tourShow(0);
+  (function tick() { if (!TOUR) return; tourLayout(); requestAnimationFrame(tick); })();
 }
 function tourEnd() {
   if (!TOUR) return;
