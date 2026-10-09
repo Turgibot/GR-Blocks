@@ -593,10 +593,10 @@ Object.assign(window.calcViewer, { startTutorial: tourStart, tourGo, endTutorial
   function dockUpdate() {
     pending = false; if (busy) return;
     const hh = hdr.offsetHeight; document.documentElement.style.setProperty('--hh', hh + 'px');
-    const r = slot.getBoundingClientRect(), mid = r.top + r.height / 2;
+    const r = slot.getBoundingClientRect(), mid = r.top + r.height * 0.7;
     const mr = document.querySelector('main').getBoundingClientRect();
     const inScope = mr.bottom > hh + 120 && mr.top < innerHeight - 120;               // sections 3-6 are on screen
-    const want = innerWidth > 900 && inScope && (docked ? mid < hh + 40 : mid < hh);                // dock as soon as the top half of panels 1-2 has scrolled out of view
+    const want = innerWidth > 900 && inScope && (docked ? mid < hh + 40 : mid < hh);                // dock as soon as the top 70% of panels 1-2 has scrolled out of view
     if (want === docked) return;
     const row = document.querySelector('.worldrow'), r0 = row.getBoundingClientRect();
     const anchor = [...document.querySelectorAll('main > .panel, main > .banner')].find(e => e.getBoundingClientRect().bottom > hh + 4);
