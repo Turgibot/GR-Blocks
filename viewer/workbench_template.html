@@ -28,7 +28,7 @@
   input[type=range]{ width:min(24vw,220px); }
   button{ font-family:var(--font-mono); font-size:.8rem; background:var(--surface-2); color:var(--ink); border:1px solid var(--grid); border-radius:4px; padding:.15rem .6rem; cursor:pointer; }
   button:hover{ border-color:var(--accent); }
-  main{ padding:1rem; max-width:1500px; margin:0 auto; }
+  main{ --edge:max(1rem, calc((100vw - 1500px) / 2)); padding:1rem var(--edge); margin:0; transition:padding-left .8s cubic-bezier(.4,0,.2,1); }
   .worldrow{ max-width:1500px; margin:1rem auto 0; padding:0 1rem; display:grid; grid-template-columns:minmax(0,1fr) 300px; gap:1rem; }
   .worldrow .panel{ margin-bottom:0; }
   @media (max-width:900px){ .worldrow{ grid-template-columns:1fr; } }
@@ -91,7 +91,9 @@
 
   /* the world and the plan dock to the left third once they scroll out of view (wide screens only) */
   body.docked .worldrow{ position:fixed; left:0; top:var(--hh,48px); width:33.333vw; max-width:none; max-height:calc(100vh - var(--hh,48px)); overflow:auto; box-sizing:border-box; margin:0; padding:.5rem; grid-template-columns:minmax(0,1fr); gap:.5rem; z-index:4; background:var(--bg); border-right:1px solid var(--grid); }
-  body.docked main{ max-width:none; margin:0 0 0 33.333vw; }
+  body.docked main{ padding-left:calc(33.333vw + 1rem); }
+  body.dock-anim{ overflow-anchor:none; }
+  @media (prefers-reduced-motion: reduce){ main{ transition:none; } }
   body.docked .worldrow .panel{ padding:.5rem .6rem; }
   body.docked #plan ol.plan{ font-size:.7rem; columns:1; }
 </style>
@@ -587,18 +589,29 @@ Object.assign(window.calcViewer, { startTutorial: tourStart, tourGo, endTutorial
 
 /* ---------- docking: world and plan float to the left third when scrolled out of view ---------- */
 {
-  const slot = $('wslot'), hdr = document.querySelector('header'); let docked = false, pending = false;
+  const slot = $('wslot'), hdr = document.querySelector('header'); let docked = false, pending = false, busy = false;
   function dockUpdate() {
-    pending = false;
+    pending = false; if (busy) return;
     const hh = hdr.offsetHeight; document.documentElement.style.setProperty('--hh', hh + 'px');
     const r = slot.getBoundingClientRect();
     const want = innerWidth > 900 && (docked ? r.bottom < hh + 40 : r.bottom < hh - 10);
     if (want === docked) return;
+    const row = document.querySelector('.worldrow'), r0 = row.getBoundingClientRect();
     const anchor = [...document.querySelectorAll('main > .panel, main > .banner')].find(e => e.getBoundingClientRect().bottom > hh + 4);
     const before = anchor ? anchor.getBoundingClientRect().top : 0;
     if (want) slot.style.height = slot.offsetHeight + 'px'; else slot.style.height = '';
     document.body.classList.toggle('docked', want); docked = want;
-    if (anchor) window.scrollBy(0, anchor.getBoundingClientRect().top - before);       // keep what the reader is looking at in place
+    const r1 = row.getBoundingClientRect(), ms = matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 800;
+    if (ms) {
+      row.animate([{ transformOrigin: '0 0', transform: `translate(${r0.left - r1.left}px,${r0.top - r1.top}px) scale(${r0.width / r1.width},${r0.height / r1.height})` },
+                   { transformOrigin: '0 0', transform: 'none' }], { duration: ms, easing: 'cubic-bezier(.4,0,.2,1)' });       // the panels shrink into place
+    }
+    busy = true; document.body.classList.add('dock-anim'); const t0 = performance.now();
+    (function follow() {                                                  // while the column slides, keep what the reader looks at in place
+      if (anchor) window.scrollBy(0, anchor.getBoundingClientRect().top - before);
+      if (performance.now() - t0 < ms + 60) { requestAnimationFrame(follow); return; }
+      busy = false; document.body.classList.remove('dock-anim'); queue();
+    })();
     window.dispatchEvent(new Event('resize'));
   }
   const queue = () => { if (!pending) { pending = true; requestAnimationFrame(dockUpdate); } };
