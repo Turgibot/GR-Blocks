@@ -98,6 +98,10 @@
   @media (prefers-reduced-motion: reduce){ main{ transition:none; } }
   body.docked .worldrow .panel{ padding:.5rem .6rem; }
   body.docked #plan ol.plan{ font-size:.7rem; columns:1; }
+
+  .costbar{ display:flex; flex-wrap:wrap; align-items:baseline; gap:.2rem .9rem; font-family:var(--font-mono); font-size:.76rem; color:var(--ink-dim); margin:0 0 .5rem; padding:.35rem .6rem; background:var(--surface-2); border-radius:6px; }
+  .costbar .big{ font-size:1.5rem; font-weight:700; color:var(--accent); line-height:1; font-variant-numeric:tabular-nums; }
+  .costbar b{ color:var(--ink); }
 </style>
 </head>
 <body>
@@ -117,7 +121,7 @@
   <button id="reset">reset to the trace values</button></span>
 </header>
 <div id="wslot"><section class="worldrow">
-  <div class="panel"><h2>1 · The world</h2><div id="world"></div><div id="lastaction" class="small"></div><div class="legend" id="legend"></div></div>
+  <div class="panel"><h2>1 · The world</h2><div id="costbar" class="costbar"></div><div id="world"></div><div id="lastaction" class="small"></div><div class="legend" id="legend"></div></div>
   <div class="panel"><h2 id="planhead">2 · R_ed's plan</h2><div class="small" id="plannote"></div><div id="plan"></div></div>
 </section></div>
 <main>
@@ -285,6 +289,16 @@ function render() {
   const nh = TL.filter(x => x.phase === 'help').length;
   $('tlabel').textContent = `${i} of ${TL.length - 1}` + (nh ? ` (${TL.length - 1 - nh} watching + ${nh} joint)` : ''); $('slider').max = TL.length - 1; $('slider').value = i;
   showWorld(i);
+  {                                                                       // the cost counter: every action, and every joint step, costs 1
+    const obs = TL.filter(x => x.phase === 'observe').length - 1, a = Math.min(i, obs), h = Math.max(0, i - obs), total = TL.length - 1, alone = META.observed_plan.length;
+    let c = `<span>cost so far</span><span class="big">${i}</span>`;
+    if (!nh) c += `<span>= ${i} action${i === 1 ? '' : 's'} of R_ed &nbsp;·&nbsp; her plan costs <b>${alone}</b> in all (1 per action)</span>`;
+    else {
+      c += `<span>= <b>${a}</b> action${a === 1 ? '' : 's'} of R_ed alone + <b>${h}</b> joint step${h === 1 ? '' : 's'} (a joint step costs 1 even when both arms move)</span>`;
+      c += `<span>finishing costs <b>${total}</b> in all` + (state.scenario === 'assistive' ? `; R_ed alone would cost <b>${alone}</b> &nbsp;→&nbsp; helpfulness <b>${alone - total}</b>` : '') + `</span>`;
+    }
+    $('costbar').innerHTML = c;
+  }
   $('lastaction').innerHTML = i === 0 ? 'Start state: nothing done yet.' : (e.phase === 'observe' ? `Action ${i}: <b>${e.text.replace('R_ed: ', 'R_ed ')}</b>` : `<b>${e.text}</b>`);
   $('legend').innerHTML = TL.some(x => x.phase === 'help') ? '<span class="r1">■ R_ed</span> &nbsp; <span class="r2">■ R_ing</span> &nbsp; (a held block hangs in its hand; the block that just moved is outlined)' : '<span class="r1">■ R_ed</span> (a held block hangs in her hand; the block that just moved is outlined)';
   const join = HELPER ? HELPER.t_join : null;
