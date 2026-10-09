@@ -148,7 +148,7 @@ const $ = id => document.getElementById(id);
 const f = (x, d = 3) => (x === null || x === undefined) ? '∞' : (Math.abs(x) < 1e-3 && x !== 0 ? x.toExponential(1) : x.toFixed(d));
 const ACT = a => a.replace(/^(\S+) (.*)$/, (m, n, r) => n + '(' + r.split(' ').join(',') + ')');
 const movedBlock = a => a.split(' ')[1];
-let META, STEPS, HELPER, SCEN = {}, TL, LAYOUT;
+let META, STEPS, HELPER, SCEN = {}, TL, LAYOUT, REF = null;
 const state = { word: null, scenario: 'alone', t: 0, variant: 'eps3', beta: 1, lam: 1, tau: 0.3, goal: null };
 
 /* ---------- the statistics, recomputed here from the stored planner costs ---------- */
@@ -193,18 +193,18 @@ function compute(steps, meta, t, variant, beta, lam, tau) {
 
 /* ---------- the timeline of a scenario: one entry per step, each with a world and the blocks that moved ---------- */
 function buildTL(scenario) {
-  const S = SCEN[scenario], tl = [], last = scenario === 'alone' ? STEPS.length - 1 : HELPER.t_join;
+  const S = SCEN[scenario], tl = [], last = scenario === 'alone' ? STEPS.length - 1 : (scenario === 'both_start' ? 0 : HELPER.t_join);
   for (let t = 0; t <= last; t++) {
     const s = STEPS[t];
     tl.push({ world: { towers: s.world.towers, hands: { 1: s.world.hand, 2: null } }, moves: s.last_action ? [{ arm: 1, block: movedBlock(s.last_action) }] : [],
               text: s.last_action ? 'R_ed: ' + ACT(s.last_action) : 'start state', traceT: t, phase: 'observe' });
   }
-  const helpSteps = scenario === 'assistive' ? HELPER.response_G.steps : (S ? S.timeline.steps : []);
+  const helpSteps = scenario === 'assistive' ? HELPER.response_G.steps : (scenario === 'both_start' ? REF.steps : (S ? S.timeline.steps : []));
   helpSteps.forEach((st, i) => {
     const c = st.comps, moves = [];
     for (const arm of [1, 2]) if (c[arm]) moves.push({ arm, block: movedBlock(c[arm]) });
     tl.push({ world: { towers: st.world.towers, hands: { 1: st.world.hands['1'], 2: st.world.hands['2'] } }, moves,
-              text: `joint step ${i + 1}:  R_ed: ${c[1] ? ACT(c[1]) : 'waits'}  |  R_ing: ${c[2] ? ACT(c[2]) : 'waits'}`, traceT: HELPER.t_join, phase: 'help', k: i + 1 });
+              text: `joint step ${i + 1}:  R_ed: ${c[1] ? ACT(c[1]) : 'waits'}  |  R_ing: ${c[2] ? ACT(c[2]) : 'waits'}`, traceT: scenario === 'both_start' ? 0 : HELPER.t_join, phase: 'help', k: i + 1 });
   });
   return tl;
 }
@@ -294,7 +294,9 @@ function render() {
     let c = `<span>cost so far</span><span class="big">${i}</span>`;
     if (!nh) c += `<span>= ${i} action${i === 1 ? '' : 's'} of R_ed &nbsp;·&nbsp; her plan costs <b>${alone}</b> in all (1 per action)</span>`;
     else {
-      c += `<span>= <b>${a}</b> action${a === 1 ? '' : 's'} of R_ed alone + <b>${h}</b> joint step${h === 1 ? '' : 's'} (a joint step costs 1 even when both arms move)</span>`;
+      c += state.scenario === 'both_start' ? `<span>= <b>${h}</b> joint step${h === 1 ? '' : 's'} (a joint step costs 1 even when both arms move)</span>`
+        : `<span>= <b>${a}</b> action${a === 1 ? '' : 's'} of R_ed alone + <b>${h}</b> joint step${h === 1 ? '' : 's'} (a joint step costs 1 even when both arms move)</span>`;
+      if (state.scenario === 'both_start') c += `<span>no recognition and no waiting: both robots act from the first step. The paper's Fig. 1 lists this as (${REF.paper[0]}, ${REF.paper[1]}): R_ed alone <b>${REF.alone}</b> · together <b>${REF.cost}</b></span>`;
       if (state.scenario === 'assistive') {                                // the paper's Definition 5: costs counted from the joining moment on
         const ca = HELPER.alone_G.cost, cd = HELPER.response_G.cost;
         c += `<span>from the joining point (after action ${obs}), as in the paper: R_ed alone c(π*<sub>G,≥now</sub>) = <b>${ca}</b> &nbsp;·&nbsp; together c(π<sub>Red←Ring</sub>) = <b>${cd}</b> &nbsp;→&nbsp; H = ${ca} − ${cd} = <b>${ca - cd}</b></span>`;
@@ -308,12 +310,16 @@ function render() {
   if (state.scenario === 'alone') {
     $('planhead').textContent = "2 · R_ed's plan"; $('plannote').textContent = `The ${META.observed_plan.length} actions R_ed performs for her hidden goal. The recognizer sees only the ones up to the current step.`;
     $('plan').innerHTML = '<ol class="plan">' + META.observed_plan.map((a, k) => `<li class="${k + 1 === i ? 'last' : (k + 1 < i ? 'done' : '')}">${ACT(a)}</li>`).join('') + '</ol>';
+  } else if (state.scenario === 'both_start') {
+    $('planhead').textContent = '2 · What happens'; $('plannote').textContent = `Both robots work together from the very first step (the reference case of the paper's Fig. 1): ${nh} joint steps.`;
+    $('plan').innerHTML = '<ol class="plan">' + TL.slice(1).map((x, k) => `<li class="help ${k + 1 === i ? 'last' : (k + 1 < i ? 'done' : '')}" value="${k + 1}">${x.text}</li>`).join('') + '</ol>';
   } else {
     $('planhead').textContent = '2 · What happens'; $('plannote').textContent = `R_ed's first ${join} actions, then R_ing joins and the two arms act together: ${nh} joint steps.` + (state.scenario === 'assistive' ? ` R_ed alone would have needed ${nh + HELPER.H} more (helpfulness H = ${HELPER.H}).` : '');
     $('plan').innerHTML = '<ol class="plan">' + TL.slice(1).map((x, k) => `<li class="${x.phase === 'help' ? 'help' : ''} ${k + 1 === i ? 'last' : (k + 1 < i ? 'done' : '')}" value="${k + 1}">${x.text}</li>`).join('') + '</ol>';
   }
   const b = $('banner');
-  if (e.phase === 'help') { b.style.display = ''; b.innerHTML = `R_ing joined after R_ed's action ${join}. The recognition below (panels 3 to 5) is frozen at that moment (step ${join}); panel 6 shows the helper's plan and its calculations.`; }
+  if (e.phase === 'help' && state.scenario === 'both_start') { b.style.display = ''; b.innerHTML = 'Reference case: nobody has observed anything yet, so there is no recognition. The panels 3 to 5 show the start state; panel 6 explains the two numbers of the paper\'s Fig. 1.'; }
+  else if (e.phase === 'help') { b.style.display = ''; b.innerHTML = `R_ing joined after R_ed's action ${join}. The recognition below (panels 3 to 5) is frozen at that moment (step ${join}); panel 6 shows the helper's plan and its calculations.`; }
   else b.style.display = 'none';
 
   const maxPost = Math.max(...META.words.map(w => R.goals[w].post));
@@ -379,7 +385,22 @@ function renderScenario(S, e) {
   h += '</div>' + (adv ? '<p class="small">The paper’s centralized formulation {¬success, d} is met trivially by everybody doing nothing, so it cannot by itself produce blocking plans; these are the blocking plans the paper describes in §5, and their helpfulness is computed exactly.</p>' : '');
   $('helper').innerHTML = h;
 }
+function renderReference(e) {
+  const P = $('helperpanel'); P.style.display = '';
+  P.querySelector('h2').textContent = '6 · Both robots from the start (Fig. 1 reference)';
+  const cur = e.phase === 'help' ? e.k : 0, ok = REF.cost === REF.paper[1];
+  let h = `<div class="formula">Fig. 1 caption: ${META.hidden_goal} (c(π*<sub>G</sub>), c(π*<sub>Red+Ring</sub>)) = (${REF.paper[0]}, ${REF.paper[1]}) &nbsp;&nbsp; Theorem 1: H(π<sub>Ring</sub>) ≤ c(π*<sub>G</sub>) − c(π*<sub>Red+Ring</sub>)</div>`;
+  h += `<p>This is not the story of the experiment (there R_ing joins later, after recognising R_ed's goal). It is the paper's <b>reference</b>: how fast two robots could build ${META.hidden_goal} if they worked together from the very beginning. The paper uses it as the best case in the proof of Theorem 1: <i>"the best case is that both agents work together from the beginning (even if that means Ring does nothing)"</i>.</p>`;
+  h += `<div class="scroll"><table><tr><th>what is planned</th><th class="num">cost (steps)</th><th class="num">paper</th></tr>
+    <tr><td>R_ed alone, from the start: c(π*<sub>G</sub>)</td><td class="num"><b>${REF.alone}</b></td><td class="num">${REF.paper[0]}</td></tr>
+    <tr><td>both arms together, from the start: c(π*<sub>Red+Ring</sub>)</td><td class="num"><b>${REF.cost}</b></td><td class="num">${REF.paper[1]}</td></tr></table></div>`;
+  h += `<p class="calc">c(π*<sub>G</sub>) − c(π*<sub>Red+Ring</sub>) = ${REF.alone} − ${REF.cost} = <b>${REF.alone - REF.cost}</b> &nbsp; ${ok ? '<span class="tag ok">our two-arm rules reproduce the paper\'s number</span>' : '<span class="tag bad">differs from the paper\'s ' + REF.paper[1] + '</span>'}</p>`;
+  h += `<p class="small">Why this check matters: the paper does not print its joint-action rules in full, so these twelve caption numbers are the only independent test that our rules (parallel moves on different blocks, handovers, stacked pairs lifted or put down together) are the paper's.</p>`;
+  h += `<div><b>The optimal joint plan</b>${jointTable(REF, cur)}</div>`;
+  $('helper').innerHTML = h;
+}
 function renderHelper(e) {
+  if (state.scenario === 'both_start') { renderReference(e); return; }
   const P = $('helperpanel');
   if (!HELPER) { P.style.display = 'none'; return; }
   if (SCEN[state.scenario]) { renderScenario(SCEN[state.scenario], e); return; }
@@ -403,12 +424,13 @@ function renderHelper(e) {
 /* ---------- loading a goal word and a scenario ---------- */
 function loadWord(word, scenario) {
   const D = DATA.words[word];
-  state.word = word; META = D.meta; STEPS = D.steps; HELPER = D.helper || null; SCEN = (HELPER && D.scenarios) || {};
+  state.word = word; META = D.meta; STEPS = D.steps; HELPER = D.helper || null; SCEN = (HELPER && D.scenarios) || {}; REF = D.reference || null;
   const sc = $('scenario'); sc.innerHTML = '';
   sc.add(new Option('R_ed alone', 'alone'));
   if (HELPER) sc.add(new Option('R_ed + R_ing helping (assistive)', 'assistive'));
   Object.entries(SCEN).forEach(([k, v]) => sc.add(new Option(v.label, k)));
-  state.scenario = (HELPER && scenario === 'assistive') || SCEN[scenario] ? scenario : 'alone'; sc.value = state.scenario;
+  if (REF) sc.add(new Option('Both robots from the start (Fig. 1 reference)', 'both_start'));
+  state.scenario = (HELPER && scenario === 'assistive') || SCEN[scenario] || (REF && scenario === 'both_start') ? scenario : 'alone'; sc.value = state.scenario;
   TL = buildTL(state.scenario); LAYOUT = computeLayout(TL);
   state.t = 0; state.goal = META.hidden_goal;
   const vs = $('variant'), cur = state.variant; vs.innerHTML = '';
