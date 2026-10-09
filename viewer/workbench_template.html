@@ -387,7 +387,7 @@ function renderScenario(S, e) {
 }
 function renderReference(e) {
   const P = $('helperpanel'); P.style.display = '';
-  P.querySelector('h2').textContent = '6 · Both robots from the start (Fig. 1 reference)';
+  P.querySelector('h2').textContent = '6 · Shared-goal collaboration (Fig. 1 reference)';
   const cur = e.phase === 'help' ? e.k : 0, ok = REF.cost === REF.paper[1];
   let h = `<div class="formula">Fig. 1 caption: ${META.hidden_goal} (c(π*<sub>G</sub>), c(π*<sub>Red+Ring</sub>)) = (${REF.paper[0]}, ${REF.paper[1]}) &nbsp;&nbsp; Theorem 1: H(π<sub>Ring</sub>) ≤ c(π*<sub>G</sub>) − c(π*<sub>Red+Ring</sub>)</div>`;
   h += `<p>This is not the story of the experiment (there R_ing joins later, after recognising R_ed's goal). It is the paper's <b>reference</b>: how fast two robots could build ${META.hidden_goal} if they worked together from the very beginning. The paper uses it as the best case in the proof of Theorem 1: <i>"the best case is that both agents work together from the beginning (even if that means Ring does nothing)"</i>.</p>`;
@@ -427,9 +427,9 @@ function loadWord(word, scenario) {
   state.word = word; META = D.meta; STEPS = D.steps; HELPER = D.helper || null; SCEN = (HELPER && D.scenarios) || {}; REF = D.reference || null;
   const sc = $('scenario'); sc.innerHTML = '';
   sc.add(new Option('R_ed alone', 'alone'));
+  if (REF) sc.add(new Option('Shared-goal collaboration (Fig. 1 reference)', 'both_start'));
   if (HELPER) sc.add(new Option('R_ed + R_ing helping (assistive)', 'assistive'));
   Object.entries(SCEN).forEach(([k, v]) => sc.add(new Option(v.label, k)));
-  if (REF) sc.add(new Option('Both robots from the start (Fig. 1 reference)', 'both_start'));
   state.scenario = (HELPER && scenario === 'assistive') || SCEN[scenario] || (REF && scenario === 'both_start') ? scenario : 'alone'; sc.value = state.scenario;
   TL = buildTL(state.scenario); LAYOUT = computeLayout(TL);
   state.t = 0; state.goal = META.hidden_goal;
@@ -709,7 +709,7 @@ Object.assign(window.calcViewer, { startTutorial: tourStart, tourGo, endTutorial
 }
 
 /* ---------- start, and the self-check: the numbers computed here must equal the ones Python stored ---------- */
-DATA.order.forEach(w => $('word').add(new Option(`${w}  (${DATA.words[w].meta.observed_plan.length} actions alone)`, w)));
+DATA.order.forEach(w => $('word').add(new Option(w, w)));
 $('word').value = DATA.default;
 {
   const m = DATA.words[DATA.default].meta; state.beta = m.beta; state.lam = m.lambda; state.tau = m.tau;
