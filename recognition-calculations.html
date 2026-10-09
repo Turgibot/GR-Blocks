@@ -295,7 +295,10 @@ function render() {
     if (!nh) c += `<span>= ${i} action${i === 1 ? '' : 's'} of R_ed &nbsp;·&nbsp; her plan costs <b>${alone}</b> in all (1 per action)</span>`;
     else {
       c += `<span>= <b>${a}</b> action${a === 1 ? '' : 's'} of R_ed alone + <b>${h}</b> joint step${h === 1 ? '' : 's'} (a joint step costs 1 even when both arms move)</span>`;
-      c += `<span>finishing costs <b>${total}</b> in all` + (state.scenario === 'assistive' ? `; R_ed alone would cost <b>${alone}</b> &nbsp;→&nbsp; helpfulness <b>${alone - total}</b>` : '') + `</span>`;
+      if (state.scenario === 'assistive') {                                // the paper's Definition 5: costs counted from the joining moment on
+        const ca = HELPER.alone_G.cost, cd = HELPER.response_G.cost;
+        c += `<span>from the joining point (after action ${obs}), as in the paper: R_ed alone c(π*<sub>G,≥now</sub>) = <b>${ca}</b> &nbsp;·&nbsp; together c(π<sub>Red←Ring</sub>) = <b>${cd}</b> &nbsp;→&nbsp; H = ${ca} − ${cd} = <b>${ca - cd}</b></span>`;
+      }
     }
     $('costbar').innerHTML = c;
   }
