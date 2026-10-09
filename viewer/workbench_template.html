@@ -90,8 +90,9 @@
   .tour-card code, .tour-card .k{ font-family:var(--font-mono); font-size:.82em; background:var(--surface-2); padding:0 .25rem; border-radius:3px; }
 
   /* the world and the plan dock to the left third once they scroll out of view (wide screens only) */
-  body.docked .worldrow{ position:fixed; left:0; top:var(--hh,48px); width:33.333vw; max-width:none; max-height:calc(100vh - var(--hh,48px)); overflow:auto; box-sizing:border-box; margin:0; padding:.5rem; grid-template-columns:minmax(0,1fr); gap:.5rem; z-index:4; background:var(--bg); border-right:1px solid var(--grid); }
-  body.docked main{ --gap:2.5rem; padding-left:calc(33.333vw + var(--gap)); padding-right:var(--gap); }  /* the same gap between the dock's border and the sections as between the sections and the scrollbar */
+  body.docked{ --pad:1.5rem; }                 /* the same distance from the left and from the right edge of the screen */
+  body.docked .worldrow{ position:fixed; left:0; top:var(--hh,48px); width:33.333vw; max-width:none; max-height:calc(100vh - var(--hh,48px)); overflow:auto; box-sizing:border-box; margin:0; padding:.5rem .5rem .5rem var(--pad); grid-template-columns:minmax(0,1fr); gap:.5rem; z-index:4; background:var(--bg); border-right:1px solid var(--grid); }
+  body.docked main{ padding-left:calc(33.333vw + 1rem); padding-right:var(--pad); }
   body.docked main > .panel, body.docked main > .banner{ scroll-margin-top:calc(var(--hh,48px) + 8px); }
   body.dock-anim{ overflow-anchor:none; }
   @media (prefers-reduced-motion: reduce){ main{ transition:none; } }
