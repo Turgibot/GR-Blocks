@@ -40,8 +40,10 @@ then `python3 scripts/build_calc_page.py`.
 * **No ROS 2, no Isaac Sim.** The robot arm does not matter for the paper's algorithm. `docker/` and `isaac/` hold an
   earlier Isaac Sim version (blocks scene and replay) that is kept but not developed further.
 * The two-arm rules (parallel moves, handover, stacked-pair lifts including a pair whose lower block is on the table)
-  reproduce 9 of the 12 two-agent costs of Fig. 1; BOTHER, MASTER and FASTER hit the 10-minute optimal-search limit.
-  The helper numbers for MASTER match the paper: 8 and 4 steps, H = 4.
+  reproduce 11 of the 12 two-agent costs of the Fig. 1 captions (the "Shared-goal collaboration" scenario shows each plan).
+  MASTER and FASTER needed 37 and 30 minutes of A* (LM-cut); BOTHER (paper: 10) is the last one and is still being searched
+  (`scripts/two_arm_word.py`, log in `out/logs/`). Splitting the search over many cores does not help (`scripts/split_search.py`:
+  every branch costs about as much as the whole search). The helper numbers for MASTER match the paper: 8 and 4 steps, H = 4.
 * Our recognition does not reproduce the curves of the paper's Fig. 2 exactly (the paper gives no λ or β, and its
   plan for MASTER is not printed). FOSTER ties with MASTER and FASTER after action 6. What I tested (scripts
   `fig2_variants.py`, `enumerate_plans.py`, `plan_patterns.py`): a weak likelihood (β about 0.05 to 0.3) with a small λ
