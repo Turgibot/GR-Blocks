@@ -91,7 +91,7 @@
 
   /* the world and the plan dock to the left third once they scroll out of view (wide screens only) */
   body.docked .worldrow{ position:fixed; left:0; top:var(--hh,48px); width:33.333vw; max-width:none; max-height:calc(100vh - var(--hh,48px)); overflow:auto; box-sizing:border-box; margin:0; padding:.5rem; grid-template-columns:minmax(0,1fr); gap:.5rem; z-index:4; background:var(--bg); border-right:1px solid var(--grid); }
-  body.docked main{ padding-left:calc(33.333vw + 1rem); padding-right:calc(1rem + .5rem); }  /* the docked panels carry .5rem of their own padding, so the gap is 1.5rem on both sides */
+  body.docked main{ padding-left:calc(33.333vw + 2rem); padding-right:calc(2rem + .5rem); }  /* the docked panels carry .5rem of their own padding, so the gap is 2.5rem on both sides */
   body.docked main > .panel, body.docked main > .banner{ scroll-margin-top:calc(var(--hh,48px) + 8px); }
   body.dock-anim{ overflow-anchor:none; }
   @media (prefers-reduced-motion: reduce){ main{ transition:none; } }
