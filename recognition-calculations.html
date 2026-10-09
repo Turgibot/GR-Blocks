@@ -92,6 +92,7 @@
   /* the world and the plan dock to the left third once they scroll out of view (wide screens only) */
   body.docked .worldrow{ position:fixed; left:0; top:var(--hh,48px); width:33.333vw; max-width:none; max-height:calc(100vh - var(--hh,48px)); overflow:auto; box-sizing:border-box; margin:0; padding:.5rem; grid-template-columns:minmax(0,1fr); gap:.5rem; z-index:4; background:var(--bg); border-right:1px solid var(--grid); }
   body.docked main{ padding-left:calc(33.333vw + 1rem); }
+  body.docked main > .panel, body.docked main > .banner{ scroll-margin-top:calc(var(--hh,48px) + 8px); }
   body.dock-anim{ overflow-anchor:none; }
   @media (prefers-reduced-motion: reduce){ main{ transition:none; } }
   body.docked .worldrow .panel{ padding:.5rem .6rem; }
@@ -599,7 +600,9 @@ Object.assign(window.calcViewer, { startTutorial: tourStart, tourGo, endTutorial
     const want = innerWidth > 900 && inScope && (docked ? mid < hh + 40 : mid < hh);                // dock as soon as the top 70% of panels 1-2 has scrolled out of view
     if (want === docked) return;
     const row = document.querySelector('.worldrow'), r0 = row.getBoundingClientRect();
-    const anchor = [...document.querySelectorAll('main > .panel, main > .banner')].find(e => e.getBoundingClientRect().bottom > hh + 4);
+    const secs = [...document.querySelectorAll('main > .panel, main > .banner')].filter(e => e.offsetHeight), lineUp = hh + 8;   // the docked panel's top edge
+    const anchor = want ? secs.reduce((a, e) => !a || Math.abs(e.getBoundingClientRect().top - lineUp) < Math.abs(a.getBoundingClientRect().top - lineUp) ? e : a, null)
+                        : secs.find(e => e.getBoundingClientRect().bottom > hh + 4);
     const before = anchor ? anchor.getBoundingClientRect().top : 0;
     if (want) slot.style.height = slot.offsetHeight + 'px'; else slot.style.height = '';
     document.body.classList.toggle('docked', want); docked = want;
@@ -610,7 +613,9 @@ Object.assign(window.calcViewer, { startTutorial: tourStart, tourGo, endTutorial
     }
     busy = true; document.body.classList.add('dock-anim'); const t0 = performance.now();
     (function follow() {                                                  // while the column slides, keep what the reader looks at in place
-      if (anchor) window.scrollBy(0, anchor.getBoundingClientRect().top - before);
+      const k = ms ? Math.min(1, (performance.now() - t0) / ms) : 1, ease = 1 - Math.pow(1 - k, 3);
+      const goal = want ? before + (lineUp - before) * ease : before;           // docking: the nearest section glides to the docked panel's top
+      if (anchor) window.scrollBy(0, anchor.getBoundingClientRect().top - goal);
       if (performance.now() - t0 < ms + 60) { requestAnimationFrame(follow); return; }
       busy = false; document.body.classList.remove('dock-anim'); queue();
     })();
