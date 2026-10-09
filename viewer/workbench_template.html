@@ -137,12 +137,6 @@
   <div class="panel">
     <h2>3 · What the planner says for every goal</h2>
     <div class="what">Every candidate goal gets a score for “how well does it explain what R_ed did so far?”, then the scores are turned into beliefs that add up to 1. Three steps:</div>
-    <div class="formula"><b>1 · Likelihood</b> &nbsp; P(O|G) = e<sup>−β·c(G+O)</sup> / ( e<sup>−β·c(G+O)</sup> + e<sup>−β·c(G+Ō)</sup> )
-      <span class="cap">“If her goal were G, how natural are the moves I have seen?” It compares two plan costs: the cheapest plan that does what was observed (G+O) and the cheapest that does not (G+Ō). If following the observed moves is cheaper, the likelihood is above 0.5; if equal, exactly 0.5.</span></div>
-    <div class="formula"><b>2 · Dynamic prior</b> &nbsp; P(t′|G), &nbsp; t′ = t + ε
-      <span class="cap">“Before weighing the moves: how plausible is it that a plan for G is still running after t′ steps?” A goal whose cheapest plan is short should already be finished by now, so it loses weight; long goals stay plausible. ε looks a few steps ahead.</span></div>
-    <div class="formula"><b>3 · Posterior (the belief)</b> &nbsp; P(G|O,t) = P(O|G) · P(t′|G) / Z
-      <span class="cap">Bayes' rule: belief ∝ likelihood × prior. Z is the sum of (likelihood × prior) over all 12 goals; dividing by it makes the 12 beliefs add up to 1.</span></div>
     <details class="explain"><summary>What do the symbols mean? (click to open)</summary><dl>
       <dt>G</dt><dd>A candidate goal: one of the 12 words R_ed might be building.</dd>
       <dt>O, t</dt><dd>O is the list of R_ed's moves seen so far, in order; t is how many (the “step”).</dd>
@@ -158,6 +152,12 @@
       <dt>Z</dt><dd>Normalising constant: the sum over all goals of likelihood × prior (the bottom row of the table).</dd>
       <dt>P(G|O,t), posterior</dt><dd>The belief in G after seeing O at time t. This is the number the helper uses.</dd>
     </dl></details>
+    <div class="formula"><b>1 · Likelihood</b> &nbsp; P(O|G) = e<sup>−β·c(G+O)</sup> / ( e<sup>−β·c(G+O)</sup> + e<sup>−β·c(G+Ō)</sup> )
+      <span class="cap">“If her goal were G, how natural are the moves I have seen?” It compares two plan costs: the cheapest plan that does what was observed (G+O) and the cheapest that does not (G+Ō). If following the observed moves is cheaper, the likelihood is above 0.5; if equal, exactly 0.5.</span></div>
+    <div class="formula"><b>2 · Dynamic prior</b> &nbsp; P(t′|G), &nbsp; t′ = t + ε
+      <span class="cap">“Before weighing the moves: how plausible is it that a plan for G is still running after t′ steps?” A goal whose cheapest plan is short should already be finished by now, so it loses weight; long goals stay plausible. ε looks a few steps ahead.</span></div>
+    <div class="formula"><b>3 · Posterior (the belief)</b> &nbsp; P(G|O,t) = P(O|G) · P(t′|G) / Z
+      <span class="cap">Bayes' rule: belief ∝ likelihood × prior. Z is the sum of (likelihood × prior) over all 12 goals; dividing by it makes the 12 beliefs add up to 1.</span></div>
     <details class="explain"><summary>What does each table column show? (click to open)</summary><dl>
       <dt>goal</dt><dd>The candidate word. ★ marks R_ed's real, hidden goal; the observer does not know it, it is shown so that you can see whether the recognition is right.</dd>
       <dt>c*(G)</dt><dd>The length of the shortest possible plan for this word from the start (HER 6 moves, MASTER 16, BOTHER 22). It never changes. It is the earliest time at which a plan for this goal could be finished, and the prior uses it.</dd>
