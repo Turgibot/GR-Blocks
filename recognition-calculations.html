@@ -282,7 +282,8 @@ function showWorld(i) {
 const listPlan = (plan, mark) => plan.length ? '<ol class="plan">' + plan.map((a, i) => `<li${mark && i + 1 === mark ? ' class="last"' : ''}>${ACT(a)}</li>`).join('') + '</ol>' : '<div class="small">(empty)</div>';
 function render() {
   const { beta, lam, tau, variant } = state, i = state.t, e = TL[i], t = e.traceT, step = STEPS[t], R = compute(STEPS, META, t, variant, beta, lam, tau), eps = epsOf(variant);
-  $('tlabel').textContent = `${i} of ${TL.length - 1}`; $('slider').max = TL.length - 1; $('slider').value = i;
+  const nh = TL.filter(x => x.phase === 'help').length;
+  $('tlabel').textContent = `${i} of ${TL.length - 1}` + (nh ? ` (${TL.length - 1 - nh} watching + ${nh} joint)` : ''); $('slider').max = TL.length - 1; $('slider').value = i;
   showWorld(i);
   $('lastaction').innerHTML = i === 0 ? 'Start state: nothing done yet.' : (e.phase === 'observe' ? `Action ${i}: <b>${e.text.replace('R_ed: ', 'R_ed ')}</b>` : `<b>${e.text}</b>`);
   $('legend').innerHTML = TL.some(x => x.phase === 'help') ? '<span class="r1">■ R_ed</span> &nbsp; <span class="r2">■ R_ing</span> &nbsp; (a held block hangs in its hand; the block that just moved is outlined)' : '<span class="r1">■ R_ed</span> (a held block hangs in her hand; the block that just moved is outlined)';
@@ -291,7 +292,7 @@ function render() {
     $('planhead').textContent = "2 · R_ed's plan"; $('plannote').textContent = `The ${META.observed_plan.length} actions R_ed performs for her hidden goal. The recognizer sees only the ones up to the current step.`;
     $('plan').innerHTML = '<ol class="plan">' + META.observed_plan.map((a, k) => `<li class="${k + 1 === i ? 'last' : (k + 1 < i ? 'done' : '')}">${ACT(a)}</li>`).join('') + '</ol>';
   } else {
-    $('planhead').textContent = '2 · What happens'; $('plannote').textContent = `R_ed's first ${join} actions, then R_ing joins and the two arms act together.`;
+    $('planhead').textContent = '2 · What happens'; $('plannote').textContent = `R_ed's first ${join} actions, then R_ing joins and the two arms act together: ${nh} joint steps.` + (state.scenario === 'assistive' ? ` R_ed alone would have needed ${nh + HELPER.H} more (helpfulness H = ${HELPER.H}).` : '');
     $('plan').innerHTML = '<ol class="plan">' + TL.slice(1).map((x, k) => `<li class="${x.phase === 'help' ? 'help' : ''} ${k + 1 === i ? 'last' : (k + 1 < i ? 'done' : '')}" value="${k + 1}">${x.text}</li>`).join('') + '</ol>';
   }
   const b = $('banner');
@@ -669,7 +670,7 @@ Object.assign(window.calcViewer, { startTutorial: tourStart, tourGo, endTutorial
 }
 
 /* ---------- start, and the self-check: the numbers computed here must equal the ones Python stored ---------- */
-DATA.order.forEach(w => $('word').add(new Option(`${w}  (${DATA.words[w].meta.observed_plan.length} actions)`, w)));
+DATA.order.forEach(w => $('word').add(new Option(`${w}  (${DATA.words[w].meta.observed_plan.length} actions alone)`, w)));
 $('word').value = DATA.default;
 {
   const m = DATA.words[DATA.default].meta; state.beta = m.beta; state.lam = m.lambda; state.tau = m.tau;
