@@ -88,6 +88,12 @@
   .tour-nav .primary{ background:var(--accent); color:var(--bg); border-color:var(--accent); font-weight:700; padding:.2rem .8rem; }
   .tour-nav button:disabled{ opacity:.35; cursor:default; }
   .tour-card code, .tour-card .k{ font-family:var(--font-mono); font-size:.82em; background:var(--surface-2); padding:0 .25rem; border-radius:3px; }
+
+  /* the world and the plan dock to the left third once they scroll out of view (wide screens only) */
+  body.docked .worldrow{ position:fixed; left:0; top:var(--hh,48px); width:33.333vw; max-width:none; max-height:calc(100vh - var(--hh,48px)); overflow:auto; box-sizing:border-box; margin:0; padding:.5rem; grid-template-columns:minmax(0,1fr); gap:.5rem; z-index:4; background:var(--bg); border-right:1px solid var(--grid); }
+  body.docked main{ max-width:none; margin:0 0 0 33.333vw; }
+  body.docked .worldrow .panel{ padding:.5rem .6rem; }
+  body.docked #plan ol.plan{ font-size:.7rem; columns:1; }
 </style>
 </head>
 <body>
@@ -106,10 +112,10 @@
   <label>τ <input type="number" id="tau" step="0.05" min="0" max="1"></label>
   <button id="reset">reset to the trace values</button>
 </header>
-<section class="worldrow">
+<div id="wslot"><section class="worldrow">
   <div class="panel"><h2>1 · The world</h2><div id="world"></div><div id="lastaction" class="small"></div><div class="legend" id="legend"></div></div>
   <div class="panel"><h2 id="planhead">2 · R_ed's plan</h2><div class="small" id="plannote"></div><div id="plan"></div></div>
-</section>
+</section></div>
 <main>
   <div class="banner" id="banner" style="display:none"></div>
   <div class="panel">
@@ -577,6 +583,28 @@ function tourLayout() {
   document.addEventListener('click', () => { menu.hidden = true; });
 }
 Object.assign(window.calcViewer, { startTutorial: tourStart, tourGo, endTutorial: tourEnd });
+
+
+/* ---------- docking: world and plan float to the left third when scrolled out of view ---------- */
+{
+  const slot = $('wslot'), hdr = document.querySelector('header'); let docked = false, pending = false;
+  function dockUpdate() {
+    pending = false;
+    const hh = hdr.offsetHeight; document.documentElement.style.setProperty('--hh', hh + 'px');
+    const r = slot.getBoundingClientRect();
+    const want = innerWidth > 900 && (docked ? r.bottom < hh + 40 : r.bottom < hh - 10);
+    if (want === docked) return;
+    const anchor = [...document.querySelectorAll('main > .panel, main > .banner')].find(e => e.getBoundingClientRect().bottom > hh + 4);
+    const before = anchor ? anchor.getBoundingClientRect().top : 0;
+    if (want) slot.style.height = slot.offsetHeight + 'px'; else slot.style.height = '';
+    document.body.classList.toggle('docked', want); docked = want;
+    if (anchor) window.scrollBy(0, anchor.getBoundingClientRect().top - before);       // keep what the reader is looking at in place
+    window.dispatchEvent(new Event('resize'));
+  }
+  const queue = () => { if (!pending) { pending = true; requestAnimationFrame(dockUpdate); } };
+  window.addEventListener('scroll', queue, { passive: true }); window.addEventListener('resize', queue);
+  dockUpdate();
+}
 
 /* ---------- start, and the self-check: the numbers computed here must equal the ones Python stored ---------- */
 DATA.order.forEach(w => $('word').add(new Option(`${w}  (${DATA.words[w].meta.observed_plan.length} actions)`, w)));
