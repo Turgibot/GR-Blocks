@@ -368,7 +368,7 @@ function render() {
   else b.style.display = 'none';
 
   const maxPost = Math.max(...META.words.map(w => R.goals[w].post));
-  $('tablenote').innerHTML = `After ${t} of R_ed's actions. Costs are the planner's optimal costs (unit cost per action). “∞” means the planner found <b>no plan</b>. Click a row for the details. Belief shown: <b>${variant === 'base' ? 'likelihood only (uniform prior)' : 'with the dynamic prior, ε = ' + eps}</b>, β = ${beta}, λ = ${lam}.`;
+  $('tablenote').innerHTML = 'Click a row to see that goal\'s plans and calculation in panel 4.';
   let h = '<tr><th>goal</th><th class="num">c*(G)</th><th class="num">c(G+O)</th><th class="num">c(G+Ō)</th><th class="num">gap</th><th class="num">P(O|G)</th><th class="num">t′</th><th class="num">P(t′|G)</th><th class="num">P(O|G)·P(t′|G)</th><th class="num">P(G|O,t)</th><th></th></tr>';
   for (const w of META.words) {
     const r = R.goals[w], gap = (r.cO === null || r.cN === null) ? '∞' : r.cN - r.cO;
@@ -616,7 +616,7 @@ const TOUR_DASH = {
       <p>Below the picture: the move that was just made, and a legend. The block that just moved is outlined.</p>` },
     { target: '.panel:has(#plan)', title: "Panel 2 · R_ed's plan", state: { t: 6 }, html: `<p>R_ed's complete plan, one move per line. Moves that have already been seen are greyed, the <b>latest</b> one is bold. Remember: the observer only sees what is greyed; the rest is the future.</p>
       <p>In the assistive scenario this panel continues with the <b>joint steps</b>, in green, after R_ing has joined.</p>` },
-    { target: '.panel:has(#goaltable)', title: 'Panel 3 · every candidate goal', state: { t: 6 }, html: `<p>The heart of the recogniser: one row per candidate word. For each, the planner is asked two questions and the answers are turned into a belief. The formula bar shows the three equations that are used; the notes under it explain this step's numbers.</p>` },
+    { target: '.panel:has(#goaltable)', title: 'Panel 3 · every candidate goal', state: { t: 6 }, html: `<p>The heart of the recogniser: one row per candidate word. For each, the planner is asked two questions and the answers are turned into a belief. The three formula lines at the top of the panel give the equations used, each with a plain sentence, and the boxes under them explain every symbol and every column.</p>` },
     { target: '#goaltable', title: 'Panel 3 · the columns', state: { t: 6 }, html: `<p>Reading the columns left to right:</p>
       <ul><li><b>c*(G)</b>: the shortest possible plan for the word from the start.</li><li><b>c(G+O)</b>, <b>c(G+Ō)</b>: the cheapest plan that does <i>perform</i> / does <i>not</i> perform the whole observed sequence in order.</li><li><b>gap</b>: c(G+Ō) − c(G+O). Negative: the observed moves are a detour for this goal (evidence against it); 0: no evidence; ∞: the moves cannot be avoided (strongest support).</li><li><b>P(O|G)</b>, the likelihood: how expected the observed moves are if this were the goal, computed from the gap (gap 0 → 0.5, gap −4 → 0.018, no way to avoid → 1).</li><li><b>t′</b>, <b>P(t′|G)</b>: the look-ahead time and the probability that a plan for this goal is still running at that time (the prior).</li><li><b>P(O|G)·P(t′|G)</b>: the score; the last column is the final belief <b>P(G|O,t)</b>, the score divided by the sum of all scores.</li></ul>
       <p><b>Click a row</b> to study that goal in panel 4. The ★ marks R_ed's real goal.</p>` },
