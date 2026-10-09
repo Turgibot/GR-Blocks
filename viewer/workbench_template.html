@@ -102,6 +102,14 @@
   .costbar{ display:flex; flex-wrap:wrap; align-items:baseline; gap:.2rem .9rem; font-family:var(--font-mono); font-size:.76rem; color:var(--ink-dim); margin:0 0 .5rem; padding:.35rem .6rem; background:var(--surface-2); border-radius:6px; }
   .costbar .big{ font-size:1.5rem; font-weight:700; color:var(--accent); line-height:1; font-variant-numeric:tabular-nums; }
   .costbar b{ color:var(--ink); }
+
+  .formula .cap{ display:block; font-family:var(--font-serif); font-size:.82rem; color:var(--ink-dim); margin-top:.2rem; line-height:1.4; }
+  .what{ font-size:.86rem; color:var(--ink-dim); margin:.1rem 0 .55rem; line-height:1.45; }
+  .explain{ margin:.5rem 0 .8rem; border:1px solid var(--grid); border-radius:6px; background:var(--surface-2); }
+  .explain summary{ cursor:pointer; padding:.4rem .7rem; font-family:var(--font-mono); font-size:.74rem; color:var(--accent); }
+  .explain dl{ margin:0; padding:.1rem .9rem .7rem; display:grid; grid-template-columns:minmax(7rem,max-content) minmax(0,1fr); gap:.4rem 1rem; font-size:.86rem; line-height:1.4; }
+  .explain dt{ font-family:var(--font-mono); font-size:.8rem; color:var(--ink); } .explain dd{ margin:0; color:var(--ink-dim); }
+  @media (max-width:700px){ .explain dl{ grid-template-columns:minmax(0,1fr); gap:.1rem; } .explain dd{ margin-bottom:.55rem; } }
 </style>
 </head>
 <body>
@@ -121,21 +129,56 @@
   <button id="reset">reset to the trace values</button></span>
 </header>
 <div id="wslot"><section class="worldrow">
-  <div class="panel"><h2>1 · The world</h2><div id="costbar" class="costbar"></div><div id="world"></div><div id="lastaction" class="small"></div><div class="legend" id="legend"></div></div>
-  <div class="panel"><h2 id="planhead">2 · R_ed's plan</h2><div class="small" id="plannote"></div><div id="plan"></div></div>
+  <div class="panel"><h2>1 · The world</h2><div class="what">The blocks, as the robots move them. Read each tower from top to bottom. The counter shows what has been spent so far (every move costs 1).</div><div id="costbar" class="costbar"></div><div id="world"></div><div id="lastaction" class="small"></div><div class="legend" id="legend"></div></div>
+  <div class="panel"><h2 id="planhead">2 · R_ed's plan</h2><div class="what">The list of moves. The observer only knows the ones already made (greyed); the bold one is the latest.</div><div class="small" id="plannote"></div><div id="plan"></div></div>
 </section></div>
 <main>
   <div class="banner" id="banner" style="display:none"></div>
   <div class="panel">
     <h2>3 · What the planner says for every goal</h2>
-    <div class="formula">P(O|G) = e<sup>−β·c(G+O)</sup> / ( e<sup>−β·c(G+O)</sup> + e<sup>−β·c(G+Ō)</sup> ) &nbsp;&nbsp; prior: P(t′|G), t′ = t + ε &nbsp;&nbsp; P(G|O,t) = P(O|G) · P(t′|G) / Z</div>
+    <div class="what">Every candidate goal gets a score for “how well does it explain what R_ed did so far?”, then the scores are turned into beliefs that add up to 1. Three steps:</div>
+    <div class="formula"><b>1 · Likelihood</b> &nbsp; P(O|G) = e<sup>−β·c(G+O)</sup> / ( e<sup>−β·c(G+O)</sup> + e<sup>−β·c(G+Ō)</sup> )
+      <span class="cap">“If her goal were G, how natural are the moves I have seen?” It compares two plan costs: the cheapest plan that does what was observed (G+O) and the cheapest that does not (G+Ō). If following the observed moves is cheaper, the likelihood is above 0.5; if equal, exactly 0.5.</span></div>
+    <div class="formula"><b>2 · Dynamic prior</b> &nbsp; P(t′|G), &nbsp; t′ = t + ε
+      <span class="cap">“Before weighing the moves: how plausible is it that a plan for G is still running after t′ steps?” A goal whose cheapest plan is short should already be finished by now, so it loses weight; long goals stay plausible. ε looks a few steps ahead.</span></div>
+    <div class="formula"><b>3 · Posterior (the belief)</b> &nbsp; P(G|O,t) = P(O|G) · P(t′|G) / Z
+      <span class="cap">Bayes' rule: belief ∝ likelihood × prior. Z is the sum of (likelihood × prior) over all 12 goals; dividing by it makes the 12 beliefs add up to 1.</span></div>
+    <details class="explain" open><summary>What do the symbols mean? (click to fold)</summary><dl>
+      <dt>G</dt><dd>A candidate goal: one of the 12 words R_ed might be building.</dd>
+      <dt>O, t</dt><dd>O is the list of R_ed's moves seen so far, in order; t is how many (the “step”).</dd>
+      <dt>c(G+O)</dt><dd>Number of moves of the cheapest plan that reaches G <i>and</i> performs all of O in order.</dd>
+      <dt>c(G+Ō)</dt><dd>Number of moves of the cheapest plan that reaches G but does <i>not</i> perform all of O in order (missing even one observed move is enough). ∞ means no such plan exists.</dd>
+      <dt>β</dt><dd>How strictly R_ed is assumed to avoid wasted moves. With β = 0 the cost gap is ignored; the larger β, the more one extra move counts.</dd>
+      <dt>P(O|G), likelihood</dt><dd>How expected the observed moves are if G were the goal. Near 1: supports G. 0.5: neutral. Near 0: speaks against G.</dd>
+      <dt>c*(G)</dt><dd>The cheapest possible plan for G from the very start: the earliest moment a plan for G could be finished.</dd>
+      <dt>ε</dt><dd>Foresight: how many steps ahead the prior looks. ε = 0 means no foresight.</dd>
+      <dt>t′</dt><dd>t′ = t + ε, the moment at which the prior is evaluated.</dd>
+      <dt>λ</dt><dd>How many extra (wasted) moves R_ed is expected to make beyond the optimal plan; it shapes the prior.</dd>
+      <dt>P(t′|G), prior</dt><dd>The probability that a plan for G has not finished yet at time t′ (“survival”). It is 1 while t′ ≤ c*(G) and shrinks afterwards.</dd>
+      <dt>Z</dt><dd>Normalising constant: the sum over all goals of likelihood × prior (the bottom row of the table).</dd>
+      <dt>P(G|O,t), posterior</dt><dd>The belief in G after seeing O at time t. This is the number the helper uses.</dd>
+    </dl></details>
+    <details class="explain"><summary>What do the table columns show? (click to open)</summary><dl>
+      <dt>goal</dt><dd>The candidate word. ★ marks R_ed's real, hidden goal (the observer does not know it).</dd>
+      <dt>c*(G)</dt><dd>Cheapest plan for G from the start.</dd>
+      <dt>c(G+O), c(G+Ō)</dt><dd>The two planner answers described above.</dd>
+      <dt>gap</dt><dd>c(G+Ō) − c(G+O): how much more it costs to <i>avoid</i> the observed moves. Large positive: strong support for G.</dd>
+      <dt>P(O|G)</dt><dd>Likelihood, from the gap.</dd>
+      <dt>t′, P(t′|G)</dt><dd>The look-ahead time and the prior (survival) at that time.</dd>
+      <dt>P(O|G)·P(t′|G)</dt><dd>The un-normalised score.</dd>
+      <dt>P(G|O,t)</dt><dd>The belief: score divided by Z.</dd>
+    </dl></details>
     <div class="small" id="tablenote"></div>
     <div class="scroll"><table id="goaltable"></table></div>
   </div>
   <div class="panel"><h2>4 · One goal in detail <span class="small" id="goalname"></span></h2><div id="detail"></div></div>
   <div class="panel">
     <h2>5 · Necessity and the helper's estimated goal</h2>
-    <div class="formula">N(p | O) = Σ<sub>G</sub> P(G|O,t) · 𝟙(p ∈ G) &nbsp;&nbsp; Ĝ<sub>Red</sub> = { p : N(p|O) ≥ τ }</div>
+    <div class="what">Beliefs about <i>goals</i> are turned into facts about <i>what must be built</i>, so that the helper has something concrete to work toward.</div>
+    <div class="formula"><b>Necessity</b> &nbsp; N(p | O) = Σ<sub>G</sub> P(G|O,t) · 𝟙(p ∈ G)
+      <span class="cap">p is a goal condition such as “S on T”. 𝟙(p ∈ G) is 1 if the goal word G contains p and 0 if not. So N(p) is the total belief of all the goals that need p: 1 means every likely goal needs it; 0 means none does.</span></div>
+    <div class="formula"><b>Estimated goal</b> &nbsp; Ĝ<sub>Red</sub> = { p : N(p|O) ≥ τ }
+      <span class="cap">The conditions that are needed with enough confidence (at least the threshold τ). Ĝ<sub>Red</sub> is what R_ing tries to help with. If two of its conditions cannot both be true at once (a <b>conflict</b>), no plan exists and R_ing waits.</span></div>
     <div id="necessity"></div>
   </div>
   <div class="panel" id="helperpanel"><h2>6 · R_ing helps (assistive interaction)</h2><div id="helper"></div></div>
@@ -337,11 +380,11 @@ function render() {
   $('goalname').textContent = '— ' + w + (w === META.hidden_goal ? ' (R_ed’s hidden goal)' : '');
   let d = '<div class="twocol"><div><b>Plan for G+O</b> <span class="small">(reach ' + w + ' and perform the ' + t + ' observed actions in order)</span>' + (r.cO === null ? '<div class="small">no plan: cost ∞</div>' : `<div class="small">cost ${r.cO}</div>` + listPlan(g.plan_O)) +
     '</div><div><b>Plan for G+Ō</b> <span class="small">(reach ' + w + ', but <b>not</b> performing the whole observed sequence in order: missing even one observed action is enough)</span>' + (r.cN === null ? '<div class="small">no plan: cost ∞ → the observations are unavoidable for this goal</div>' : `<div class="small">cost ${r.cN}</div>` + listPlan(g.plan_notO)) + '</div></div>';
-  d += '<h2 style="margin-top:.6rem">likelihood, step by step</h2><div class="calc">';
+  d += '<h2 style="margin-top:.6rem">1 · likelihood, step by step</h2><div class="what"><b>Likelihood</b> P(O|G): if R_ed were really building ' + w + ', how natural would the moves seen so far be? The two plan costs above are turned into weights, e<sup>−β·cost</sup> (every extra move divides the weight by e<sup>β</sup>), and the share of the first weight is the likelihood. Equal costs give 0.5: the moves say nothing about ' + w + '. If following the observed moves is cheaper, the likelihood is above 0.5 (they support ' + w + '); if costlier, below.</div><div class="calc">';
   if (t === 0) d += 'Nothing observed yet, so P(O|G) = 1 for every goal.';
   else d += `e<sup>−β·c(G+O)</sup> = e<sup>−${beta}·${r.cO === null ? '∞' : r.cO}</sup> = <b>${f(r.eO, 5)}</b><br>e<sup>−β·c(G+Ō)</sup> = e<sup>−${beta}·${r.cN === null ? '∞' : r.cN}</sup> = <b>${f(r.eN, 5)}</b><br>α′ = ${f(r.eO, 5)} + ${f(r.eN, 5)} = <b>${f(r.alpha, 5)}</b><br>P(O|G) = ${f(r.eO, 5)} / ${f(r.alpha, 5)} = <b>${f(r.like, 4)}</b>` +
     (r.cN === null ? '<br><span class="tag ok">no plan without O: likelihood 1</span>' : (r.cO === r.cN ? '<br><span class="tag">equal costs: likelihood 0.5, the observations neither support nor contradict this goal</span>' : ''));
-  d += '</div><h2 style="margin-top:.6rem">dynamic prior, step by step</h2><div class="calc">';
+  d += '</div><h2 style="margin-top:.6rem">2 · dynamic prior, step by step</h2><div class="what"><b>Dynamic prior</b> P(t′|G): before weighing the moves, how plausible is it that a plan for ' + w + ' is <i>still running</i> after t′ = t + ε steps? The cheapest plan for ' + w + ' takes c*(G) = ' + r.c + ' steps, the earliest it could end. A real plan may waste a few moves: the (positive Poisson) table below gives the probability that the plan ends after exactly x steps. P(t′|G) is the probability that it has <b>not</b> ended by t′, that is 1 minus the sum of the rows with x &lt; t′. Short goals are probably finished by t′ and lose weight; long goals keep it. This corrects the bias of the likelihood toward cheap goals.</div><div class="calc">';
   if (!r.prior.used) d += 'Belief “likelihood only”: no prior is applied (survival = 1 for every goal).';
   else {
     d += `c*(G) = ${r.c}, &nbsp; t′ = t + ε = ${t} + ${eps} = <b>${r.prior.tp}</b>, &nbsp; λ = ${lam}, so λ+1 = ${f(lam + 1, 2)}, e<sup>λ+1</sup> − 1 = ${f(Math.exp(lam + 1) - 1, 4)}<br>`;
@@ -352,7 +395,7 @@ function render() {
       d += `</table></div>P(t′|G) = 1 − ${f(r.prior.cum, 4)} = <b>${f(r.prior.surv, 4)}</b>`;
     }
   }
-  d += `</div><h2 style="margin-top:.6rem">posterior</h2><div class="calc">score = P(O|G) · P(t′|G) = ${f(r.like, 4)} · ${f(r.prior.surv, 4)} = <b>${f(r.score, 4)}</b><br>Z = ${f(R.Z, 4)} (sum of the ${META.words.length} scores)<br>P(G|O,t) = ${f(r.score, 4)} / ${f(R.Z, 4)} = <b>${f(r.post, 4)}</b></div>`;
+  d += `</div><h2 style="margin-top:.6rem">3 · posterior (the belief)</h2><div class="what"><b>Posterior</b> P(G|O,t): the belief in ${w} after seeing the moves. Bayes' rule multiplies the likelihood by the prior to get a score; dividing by Z, the sum of the scores of all ${META.words.length} goals, makes the beliefs add up to 1.</div><div class="calc">score = P(O|G) · P(t′|G) = ${f(r.like, 4)} · ${f(r.prior.surv, 4)} = <b>${f(r.score, 4)}</b><br>Z = ${f(R.Z, 4)} (sum of the ${META.words.length} scores)<br>P(G|O,t) = ${f(r.score, 4)} / ${f(R.Z, 4)} = <b>${f(r.post, 4)}</b></div>`;
   $('detail').innerHTML = d;
 
   let n = `<div class="small">τ = ${tau}. A condition is “X on Y” for a block pair of the goal word, plus the last letter on the table. Each row adds up the posterior of every goal that contains the condition.</div><div class="scroll"><table><tr><th>condition</th><th>goals that contain it, with their P(G|O,t)</th><th class="num">N</th><th>≥ τ ?</th></tr>`;
@@ -375,6 +418,7 @@ function renderScenario(S, e) {
   P.querySelector('h2').textContent = '6 · ' + S.label;
   const adv = S.kind === 'adversarial';
   let h = `<div class="formula">${adv ? 'Adversarial (Definition 4): R_ing wants to prevent R_ed from finishing' : 'Independent (Definition 3): G<sub>Ring</sub> = G′ ∪ {success}'} &nbsp;&nbsp; H(π<sub>Ring</sub>) = c(π*<sub>G,≥now</sub>) − c(π<sub>Red←Ring</sub>) (Definition 5)</div>`;
+  h += GLOSS_HELP;
   h += `<p>R_ing acts from R_ed's action <b>${HELPER.t_join}</b> on. ${S.text}</p>`;
   h += '<div class="scroll"><table><tr><th>what is planned</th><th class="num">cost (steps)</th><th>note</th></tr>' + S.rows.map(r => `<tr><td>${r[0]}</td><td class="num"><b>${r[1]}</b></td><td class="small">${r[2]}</td></tr>`).join('') + '</table></div>';
   h += `<p class="calc">H(π<sub>Ring</sub>) = ${S.H_text} &nbsp; ${S.H_is_minus_inf ? '<span class="tag bad">−∞: R_ed can never reach her goal</span>' : (S.H < 0 ? '<span class="tag bad">negative: R_ing made it worse</span>' : (S.H > 0 ? '<span class="tag ok">positive: R_ing helped</span>' : '<span class="tag">zero</span>'))}</p>`;
@@ -385,6 +429,14 @@ function renderScenario(S, e) {
   h += '</div>' + (adv ? '<p class="small">The paper’s centralized formulation {¬success, d} is met trivially by everybody doing nothing, so it cannot by itself produce blocking plans; these are the blocking plans the paper describes in §5, and their helpfulness is computed exactly.</p>' : '');
   $('helper').innerHTML = h;
 }
+const GLOSS_HELP = `<details class="explain" open><summary>What do these terms mean? (click to fold)</summary><dl>
+  <dt>Ĝ<sub>Red</sub></dt><dd>The goal conditions R_ing believes R_ed needs (from panel 5).</dd>
+  <dt>P<sub>Ring</sub></dt><dd>R_ing's planning problem: both arms may act, starting from now, and the goal is Ĝ<sub>Red</sub> (for the assistive case). The planner finds the cheapest joint plan.</dd>
+  <dt>π<sub>Ring</sub></dt><dd>R_ing's own half of that joint plan. It is all R_ing can do: it cannot tell R_ed what to do, so R_ed's half is not known to her.</dd>
+  <dt>c(π*<sub>G,≥now</sub>)</dt><dd>What R_ed would still pay <i>alone</i> to reach her real goal G from now (row C).</dd>
+  <dt>c(π<sub>Red←Ring</sub>)</dt><dd>What the two arms pay to reach G if R_ing performs exactly π<sub>Ring</sub> (row D). In the paper this is the best the planner can do when R_ed adapts perfectly to R_ing's moves.</dd>
+  <dt>H, helpfulness</dt><dd>H = c(π*<sub>G,≥now</sub>) − c(π<sub>Red←Ring</sub>): the steps R_ing's plan saves. Positive: it helps. Zero: neutral. Negative: it makes things worse (for example, when R_ing guessed the goal wrong). −∞: R_ed can no longer finish at all.</dd>
+</dl></details>`;
 function renderReference(e) {
   const P = $('helperpanel'); P.style.display = '';
   P.querySelector('h2').textContent = '6 · Shared-goal collaboration (Fig. 1 reference)';
@@ -409,6 +461,7 @@ function renderHelper(e) {
   const H = HELPER, A = H.alone_Ghat, B = H.joint_Ghat, C = H.alone_G, D = H.response_G, paper = META.hidden_goal === 'MASTER';
   const pi = H.pi_ring.map((a, k) => `${k + 1}. ${a ? ACT(a) : 'wait'}`).join(' &nbsp;→&nbsp; ');
   let h = `<div class="formula">P<sub>Ring</sub>: goal G<sub>Ring</sub> = Ĝ<sub>Red</sub> (Definition 2) &nbsp;&nbsp; H(π<sub>Ring</sub>) = c(π*<sub>G,≥now</sub>) − c(π<sub>Red←Ring</sub>) (Definition 5)</div>`;
+  h += GLOSS_HELP;
   h += `<p>R_ing joins after R_ed's action <b>${H.t_join}</b>: the first step at which Ĝ<sub>Red</sub> has no conflicts and something is still unmet. Ĝ<sub>Red</sub> = { ${H.G_hat.join(', ')} }.</p>`;
   h += `<div class="scroll"><table><tr><th></th><th>what is planned</th><th class="num">cost (steps)</th>${paper ? '<th class="num">paper</th>' : ''}</tr>
     <tr><td>A</td><td>R_ed alone, from now to Ĝ<sub>Red</sub></td><td class="num"><b>${A.cost}</b></td>${paper ? '<td class="num">8</td>' : ''}</tr>
@@ -708,6 +761,17 @@ Object.assign(window.calcViewer, { startTutorial: tourStart, tourGo, endTutorial
   dockUpdate();
 }
 
+/* tooltips for the top bar */
+{
+  const tip = (id, text) => { const el = $(id); if (el) (el.closest('label') || el).title = text; };
+  tip('word', "The word R_ed is secretly building. The observer does not know it; it is here so we can check whether the recognition gets it right.");
+  tip('scenario', "What happens after the goal has been recognised: R_ed alone, shared-goal collaboration (a reference), assistive, independent or adversarial interaction.");
+  tip('slider', "Step t: R_ing has seen the first t moves. In the assistive scenarios the later steps are joint steps of both robots.");
+  tip('variant', "Which prior the belief uses: likelihood only, or the dynamic prior with foresight ε.");
+  tip('beta', "β: how strictly R_ed is assumed to avoid wasted moves (used in the likelihood).");
+  tip('lam', "λ: how many extra moves R_ed is expected to make beyond the optimal plan (used in the prior).");
+  tip('tau', "τ: the necessity threshold. A condition with N ≥ τ is treated as part of R_ed's goal.");
+}
 /* ---------- start, and the self-check: the numbers computed here must equal the ones Python stored ---------- */
 DATA.order.forEach(w => $('word').add(new Option(w, w)));
 $('word').value = DATA.default;
