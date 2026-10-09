@@ -483,7 +483,7 @@ function loadWord(word, scenario) {
   const sc = $('scenario'); sc.innerHTML = '';
   sc.add(new Option('R_ed alone', 'alone'));
   if (REF) sc.add(new Option('Shared-goal collaboration', 'both_start'));
-  if (HELPER) sc.add(new Option('R_ed + R_ing helping (assistive)', 'assistive'));
+  if (HELPER) sc.add(new Option('assistive: R_ing helps R_ed', 'assistive'));
   Object.entries(SCEN).forEach(([k, v]) => sc.add(new Option(v.label, k)));
   state.scenario = (HELPER && scenario === 'assistive') || SCEN[scenario] || (REF && scenario === 'both_start') ? scenario : 'alone'; sc.value = state.scenario;
   TL = buildTL(state.scenario); LAYOUT = computeLayout(TL);
