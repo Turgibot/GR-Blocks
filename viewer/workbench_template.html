@@ -627,12 +627,74 @@ const TOUR_DASH = {
       <p>That is the whole dashboard. Next: open <b>Tutorials ▾ → The running example</b> to see what all of this does in one real experiment.</p>` },
   ]
 };
-const TUTORIALS = [TOUR_DASH, TOUR_WALK];
+
+/* ---------- tutorial 2: the statistics, with the experiment's own numbers (computed when each step is shown) ---------- */
+const MD = () => DATA.words.MASTER;
+const RR = (t, variant = 'eps3', beta, lam, tau) => { const m = MD().meta; return compute(MD().steps, m, t, variant, beta ?? m.beta, lam ?? m.lambda, tau ?? m.tau); };
+const exampleOpp = () => { const st = MD().steps; for (let t = 1; t < st.length; t++) for (const w of MD().meta.words) { const g = st[t].goals[w]; if (g.c_O !== null && g.c_notO !== null && g.c_notO > g.c_O) return { t, w, cO: g.c_O, cN: g.c_notO }; } return null; };
+const exampleNone = () => { const st = MD().steps; for (let t = 1; t < st.length; t++) for (const w of MD().meta.words) { const g = st[t].goals[w]; if (g.c_O !== null && g.c_notO === null) return { t, w, cO: g.c_O }; } return null; };
+const rowsTable = (head, rows) => `<table><tr>${head.map(h => `<th>${h}</th>`).join('')}</tr>${rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}</table>`;
+const TOUR_STATS = {
+  id: 'stats', title: 'The statistics, step by step', blurb: 'Probability, likelihood, prior, survival, posterior, necessity: every formula with this experiment\'s real numbers. About 20 minutes.',
+  steps: [
+    { title: 'What this tour is for', html: () => `<p>R_ing watches R_ed's moves and must decide <b>how sure it is about each of the 12 possible words</b>. Doing that honestly needs a little statistics. This tour builds it up one idea at a time and, at every step, uses <b>the experiment's real numbers</b> (R_ed building MASTER, after her 6th move) taken live from the planner results on this page.</p>
+      <p>Order: probability &rarr; Bayes' rule &rarr; likelihood &rarr; prior and survival &rarr; foresight &rarr; posterior &rarr; necessity. You do not need any background.</p>` },
+    { target: '#goaltable', title: 'Probability: a share of belief', state: { t: 0 }, html: () => { const R = RR(0); return `<p>A <b>probability</b> is a number between 0 and 1 that says how much we believe something: 0 = impossible, 1 = certain. Over all 12 goals the beliefs must <b>add up to 1</b>, as if we had 1 unit of belief to hand out.</p>
+      <p>At step 0 nothing has been seen, so we hand it out equally: each goal gets 1/12 = <b>${f(R.goals.HER.post)}</b>. Check the last column of the table: twelve identical numbers, summing to ${f(META.words.reduce((a, w) => a + R.goals[w].post, 0))}.</p><p>Everything that follows is about <b>how evidence moves belief around</b> between the 12 goals.</p>`; } },
+    { title: "Bayes' rule in everyday words", html: () => { const pr = 0.2, lr = 0.9, lw = 0.1, post = lr * pr / (lr * pr + lw * (1 - pr)); return `<p>Before the experiment, a small everyday example. A friend walks in with a <b>wet umbrella</b>. Did it rain?</p>
+      <ul><li><b>Prior</b>: before seeing the umbrella, it rains on 20% of days: P(rain) = ${pr}.</li><li><b>Likelihood</b>: if it rained, a wet umbrella is very likely (${lr}); if it did not, unlikely (${lw}).</li></ul>
+      <p><b>Posterior</b> = likelihood × prior, divided by the sum over both cases:</p><p style="text-align:center">${lr}·${pr} / ( ${lr}·${pr} + ${lw}·${f(1 - pr, 1)} ) = <b>${f(post)}</b></p>
+      <p>The umbrella raised our belief in rain from 0.2 to ${f(post, 2)}. In the experiment the "days" are the 12 goals and the "umbrella" is R_ed's moves. The formula is the same: <b>posterior ∝ likelihood × prior</b>.</p>`; } },
+    { target: '#detail', title: 'What counts as evidence here', state: { t: 6, goal: 'HER' }, html: () => { const g = RR(6).goals.HER; return `<p>The evidence is the list of R_ed's moves so far. To see how well a goal explains it, the planner is asked two questions for that goal (here HER, after 6 moves):</p>
+      <ul><li><b>G+O</b>: cheapest plan that reaches HER <i>and</i> performs the observed moves: <b>${g.cO}</b> moves.</li><li><b>G+Ō</b>: cheapest plan that reaches HER <i>without</i> performing the whole observed sequence: <b>${g.cN}</b> moves.</li></ul>
+      <p>If R_ed were really going for HER, she would not have made moves that cost ${g.cO - g.cN} extra, so these moves are evidence <i>against</i> HER. We want a number for that.</p>`; } },
+    { target: '#detail', title: 'From costs to a likelihood', state: { t: 6, goal: 'HER' }, html: () => { const g = RR(6).goals.HER, b = MD().meta.beta; return `<p>The <b>likelihood</b> P(O|G) answers: <i>if the goal were G, how expected are these moves?</i> We give every plan a weight that shrinks with its cost: <b>weight = e<sup>−β·cost</sup></b>. Each extra move multiplies the weight by e<sup>−β</sup> = ${f(Math.exp(-b))} (β = ${b}).</p>
+      <p>For HER: weight(G+O) = e<sup>−${b}·${g.cO}</sup> = <b>${f(g.eO, 5)}</b>, weight(G+Ō) = e<sup>−${b}·${g.cN}</sup> = <b>${f(g.eN, 5)}</b>.</p>
+      <p>The likelihood is the <b>share</b> of the first weight: ${f(g.eO, 5)} / (${f(g.eO, 5)} + ${f(g.eN, 5)}) = <b>${f(g.like, 3)}</b>. So only ${f(g.like * 100, 1)}% of the weight is on "following the observed moves": HER is unlikely.</p>`; } },
+    { target: '#detail', title: 'Reading a likelihood', state: { t: 6, goal: 'MASTER' }, html: () => { const R = RR(6), g = R.goals.MASTER, n = exampleNone(), vals = [...new Set(MD().meta.words.map(w => f(R.goals[w].like)))].join(', ');
+      return `<p>How to read the number:</p><ul><li><b>Equal costs → 0.5.</b> For MASTER both questions cost ${g.cO}: the moves are just as compatible with MASTER as without it, so the likelihood is exactly <b>${f(g.like)}</b>. No information.</li>`
+      + (n ? `<li><b>Avoiding the moves is impossible → 1.</b> Example: ${n.w} after ${n.t} move${n.t > 1 ? 's' : ''}: no plan exists without them (cost ∞), likelihood <b>1</b>.</li>` : '')
+      + `<li><b>Following the moves costs more → below 0.5</b> (HER above: ${f(R.goals.HER.like)}). The bigger the gap, the smaller the number.</li></ul>
+      <p>A value between 0.5 and 1 would mean "the moves are cheaper than avoiding them, but avoiding them is possible". In this MASTER run it never happens: after 6 moves the twelve likelihoods are only <b>${vals}</b>.</p>`; } },
+    { target: '#params', title: 'What β does', state: { t: 6, goal: 'HER' }, html: () => { const g = RR(6).goals.HER, bs = [0, 0.1, 0.5, 1, 2], lk = b => 1 / (1 + Math.exp(b * (g.cO - g.cN))); return `<p>β says <b>how strictly we expect R_ed to avoid wasted moves</b>. Same HER example (costs ${g.cO} vs ${g.cN}), different β:</p>
+      ${rowsTable(['β', 'likelihood P(O|G)'], bs.map(b => [b, f(lk(b), 4)]))}<p>With β = 0 we expect nothing: always 0.5. As β grows the ${g.cO - g.cN}-move gap counts more and more. The paper leaves β to the user; the page starts with β = 1 (the box in the top bar changes it live).</p>`; } },
+    { target: '#detail', title: 'Why a prior is needed', state: { t: 6, goal: 'BOTHER' }, html: () => { const R = RR(6), b = R.goals.BOTHER, h = R.goals.HER; return `<p>The likelihood has a blind spot: it assumes R_ed is <b>optimal</b> and compares plan costs, so it favours goals that can be reached quickly. A long goal like BOTHER (${b.c} moves) has hardly begun after 6 moves, and its observed moves cannot yet prove anything for it.</p>
+      <p>We want a second piece of information: <b>how plausible is it that a plan for G is still running at this time?</b> A 6-move goal like HER should already be <i>finished</i> after 6 moves of work; a 22-move goal like BOTHER is just getting going. That is the <b>prior</b>, and it changes with time, hence <b>dynamic</b> prior.</p>`; } },
+    { target: '#detail', title: 'How long do plans run?', state: { t: 6, goal: 'HER' }, html: () => { const c = MD().meta.goals.HER.c_star, lam = MD().meta.lambda, xs = [0, 1, 2, 3, 4, 5].map(i => c + i); return `<p>A rational agent needs exactly c* moves (HER: c* = ${c}), but real agents sometimes waste a few. We model the <b>total length x of her plan</b> with a "positive Poisson" distribution: a standard model for counting extra events, shifted so that the optimal length c* is the smallest possible.</p>
+      <p style="text-align:center">P(x | G) = (λ+1)<sup>k</sup> / ( k! · (e<sup>λ+1</sup> − 1) ), &nbsp; k = x − c* + 1</p><p>With λ = ${lam}:</p>
+      ${rowsTable(['x (moves)', 'k', 'P(x|G)'], xs.map(x => [x, x - c + 1, f(pmf(x, c, lam), 4)]))}<p>So HER takes exactly ${c} moves with probability ${f(pmf(c, c, lam), 3)}, ${c + 1} moves with ${f(pmf(c + 1, c, lam), 3)}, ${c + 2} with ${f(pmf(c + 2, c, lam), 3)}, and the chance keeps falling for longer plans. λ is the knob: larger λ means more wasted moves are expected.</p>`; } },
+    { target: '#detail', title: 'Survival: has the plan finished yet?', state: { t: 6, goal: 'HER' }, html: () => { const r = RR(6).goals.HER, pr = r.prior; return `<p>The prior we need is the probability that the plan is <b>still running</b> at time t′, the "survival" probability: P(t′|G) = P(plan length ≥ t′) = 1 − (probability that it ended earlier).</p>
+      <p>For HER after t = 6 moves (and ε = 3, next step): t′ = <b>${pr.tp}</b>. Plans of length ${r.c}, ${r.c + 1}, … ${pr.tp - 1} would already have ended:</p>
+      ${rowsTable(['x', 'P(x|G)', 'running sum'], pr.terms.map(q => [q.x, f(q.p, 4), f(q.cum, 4)]))}<p>P(t′|G) = 1 − ${f(pr.cum, 4)} = <b>${f(pr.surv, 4)}</b>. HER is probably over by now, so it loses weight. For a goal with c* ≥ t′ nothing could have ended yet and the survival is exactly 1 (BOTHER: ${f(RR(6).goals.BOTHER.prior.surv, 1)}).</p>`; } },
+    { target: '#detail', title: 'Foresight ε: looking a few steps ahead', state: { t: 6, goal: 'BOTHER' }, html: () => { const eps = [0, 1, 3, 6]; return `<p>Why evaluate the prior at t′ = t + <b>ε</b> and not at t? Because R_ing has to act <i>before</i> the plan is over. With ε &gt; 0 we ask "will this plan still be running a few steps from now?", which gives the long, costly goals a chance while the likelihood is still ignoring them. ε = 0 means no foresight.</p>
+      ${rowsTable(['ε', 't′', 'survival HER', 'belief HER', 'belief MASTER', 'belief BOTHER'], eps.map(e => { const R = RR(6, 'eps' + e); return [e, 6 + e, f(R.goals.HER.prior.surv, 3), f(R.goals.HER.post, 3), f(R.goals.MASTER.post, 3), f(R.goals.BOTHER.post, 3)]; }))}<p>Watch HER's survival and belief collapse as ε grows: the short goal is written off, and its share of belief goes to the long goals, a little to each. The paper uses ε = 3; you can change it in the top bar (belief menu).</p>`; } },
+    { target: '.panel:has(#goaltable)', title: 'Multiply: likelihood × prior', state: { t: 6, goal: 'MASTER' }, html: () => { const R = RR(6), ws = ['HER', 'OTHER', 'BOTHER', 'MASTER', 'FASTER', 'FOSTER']; return `<p>Bayes' rule multiplies, for each goal, the <b>likelihood</b> (do the moves fit?) by the <b>prior</b> (is the plan still running?) to get a <b>score</b>. Real numbers after 6 moves (ε = 3):</p>
+      ${rowsTable(['goal', 'likelihood', 'prior', 'score'], ws.map(w => [w, f(R.goals[w].like), f(R.goals[w].prior.surv), f(R.goals[w].score)]))}<p>(The other six goals are in the table above.) Scores are not probabilities yet: they do not add up to 1.</p>`; } },
+    { target: '.panel:has(#goaltable)', title: 'Normalise: divide by Z', state: { t: 6, goal: 'MASTER' }, html: () => { const R = RR(6), m = R.goals.MASTER; return `<p>To turn scores into beliefs we divide each by the <b>sum of all 12 scores</b>, called Z:</p>
+      <p style="text-align:center">Z = ${f(R.Z, 4)}, &nbsp; P(MASTER|O,t) = ${f(m.score, 4)} / ${f(R.Z, 4)} = <b>${f(m.post, 4)}</b></p>
+      <p>Now the 12 beliefs add up to ${f(META.words.reduce((a, w) => a + R.goals[w].post, 0))} again (bottom row of the table). This is the <b>posterior</b> P(G|O,t): the belief after seeing the evidence. We started with 1/12 = 0.083 for each goal; MASTER is now at ${f(m.post)} and HER at ${f(R.goals.HER.post)}.</p>`; } },
+    { target: '.panel:has(#goaltable)', title: 'Reading the result', state: { t: 6, goal: 'MASTER' }, html: () => { const R = RR(6), t3 = ['MASTER', 'FASTER', 'FOSTER']; return `<p>MASTER, FASTER and FOSTER tie at <b>${f(R.goals.MASTER.post)}</b>. Why exactly equal?</p>
+      <ul><li>Their likelihoods are all ${f(R.goals.MASTER.like)} (equal costs with and without the observed moves).</li><li>Their priors are all ${f(R.goals.MASTER.prior.surv, 1)}: with t′ = 9 and c* = ${t3.map(w => R.goals[w].c).join(', ')}, none of their plans could have ended yet.</li></ul>
+      <p>Same numerator, same Z, same belief. The data so far cannot separate the three; the next moves will. (The paper's text names MASTER and FASTER as the leaders; FOSTER ties with them in our numbers.)</p>`; } },
+    { target: '#necessity', title: 'Necessity: an expected value', state: { t: 6, goal: 'MASTER' }, html: () => { const R = RR(6), q = R.rows.find(x => x.p === 'on(S,T)'); return `<p>The helper needs <b>facts</b>, not just beliefs about words. The <b>necessity</b> of a condition p, such as "S on T", is the <b>expected value</b> of "does the true goal need p?" under our beliefs:</p>
+      <p style="text-align:center">N(p|O) = Σ<sub>G</sub> P(G|O,t) · 𝟙(p ∈ G)</p><p>𝟙 is 1 if the word contains p and 0 otherwise, so N(p) simply adds the beliefs of the goals that need p. For S on T:</p>
+      <p style="text-align:center">${q.contrib.filter(c => c[1] > 5e-4).map(c => `${c[0]} ${f(c[1])}`).join(' + ')} = <b>${f(q.N)}</b></p>` ; } },
+    { target: '#necessity', title: 'The threshold τ', state: { t: 6, goal: 'MASTER' }, html: () => { const taus = [0.3, 0.5, 0.9]; return `<p>We keep the conditions whose necessity reaches a threshold τ: Ĝ<sub>Red</sub> = { p : N(p) ≥ τ }. The choice of τ trades safety against reach:</p>
+      ${rowsTable(['τ', 'conditions in Ĝ', 'count'], taus.map(tau => { const R = RR(6, 'eps3', undefined, undefined, tau); return [tau, R.ghat.join(', '), R.ghat.length]; }))}<p>A low τ includes conditions R_ing is only fairly sure about (risking conflicts); a high τ keeps only near-certain ones (less to help with). The paper uses τ = 0.3; change it in the top bar to see the table above move.</p>`; } },
+    { title: 'All the formulas in one place', html: () => `<ol style="padding-left:1.1rem"><li><b>Likelihood</b>: P(O|G) = e<sup>−β·c(G+O)</sup> / ( e<sup>−β·c(G+O)</sup> + e<sup>−β·c(G+Ō)</sup> ): do the moves fit G?</li>
+      <li><b>Plan-length model</b>: P(x|G) = (λ+1)<sup>k</sup> / (k!·(e<sup>λ+1</sup>−1)), k = x − c* + 1: how long plans for G run.</li>
+      <li><b>Survival prior</b>: P(t′|G) = 1 − Σ<sub>x&lt;t′</sub> P(x|G), t′ = t + ε: is the plan still running?</li>
+      <li><b>Posterior</b>: P(G|O,t) = P(O|G)·P(t′|G) / Z, with Z = Σ<sub>G</sub> P(O|G)·P(t′|G).</li>
+      <li><b>Necessity</b>: N(p|O) = Σ<sub>G</sub> P(G|O,t)·𝟙(p ∈ G); Ĝ<sub>Red</sub> = { p : N(p|O) ≥ τ }.</li></ol>
+      <p>Next, try the other tutorials, or play with β, λ, τ and ε in the top bar and watch each number above move.</p>` },
+  ]
+};
+const TUTORIALS = [TOUR_DASH, TOUR_STATS, TOUR_WALK];
 let TOUR = null;                                           // the running tour, or null
 
 function tourEffective(tut) {                              // the page state each step needs (inherited from the step before)
   const eff = []; let cur = { ...TUT_BASE };
-  tut.steps.forEach(s => { cur = { ...cur, ...(s.state || {}) }; eff.push({ ...cur }); });
+  tut.steps.forEach(s => { cur = { ...cur, ...((typeof s.state === 'function' ? s.state() : s.state) || {}) }; eff.push({ ...cur }); });
   return eff;
 }
 function applyTourState(st) {
@@ -672,7 +734,7 @@ function tourShow(i) {
   document.body.classList.toggle('tour-lock', !s.wait);     // while the user is asked to click, the page keys stay alive
   const n = T.tut.steps.length, last = i === n - 1;
   $('tcard').innerHTML = `<div class="tour-top"><span>${T.tut.title} · step ${i + 1} of ${n}</span><button id="tx" title="Close (Esc)" aria-label="Close the tour">✕</button></div><div class="tour-bar"><i style="width:${Math.round((i + 1) / n * 100)}%"></i></div>
-    <h3>${s.title}</h3><div>${s.html}</div>${s.wait ? `<div class="tour-hint">👉 ${s.hint}</div>` : ''}
+    <h3>${s.title}</h3><div>${typeof s.html === 'function' ? s.html() : s.html}</div>${s.wait ? `<div class="tour-hint">👉 ${s.hint}</div>` : ''}
     <div class="tour-nav"><button id="tback" ${i === 0 ? 'disabled' : ''}>◀ Back</button>${s.wait ? '<button id="tauto" title="Do the click for me">do it for me</button>' : ''}<button class="primary" id="tnext" ${s.wait ? 'disabled' : ''}>${last ? 'Finish' : 'Next ▶'}</button></div>`;
   $('tx').onclick = tourEnd; $('tback').onclick = () => tourGo(i - 1);
   $('tnext').onclick = () => last ? tourEnd() : tourGo(i + 1);
