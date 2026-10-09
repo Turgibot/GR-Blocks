@@ -62,11 +62,38 @@
   #worldsvg .c1{ stroke:var(--accent); } #worldsvg .c2{ stroke:var(--accent2); }
   .legend{ font-family:var(--font-mono); font-size:.72rem; color:var(--ink-dim); margin-top:.3rem; }
   .legend .r1{ color:var(--accent); font-weight:700; } .legend .r2{ color:var(--accent2); font-weight:700; }
+
+  .dropdown{ position:relative; }
+  #tutbtn{ background:var(--accent-soft); color:var(--accent); border-color:var(--accent); font-weight:700; }
+  .menu{ position:absolute; top:calc(100% + 6px); left:0; min-width:340px; background:var(--surface); border:1px solid var(--grid); border-radius:8px; box-shadow:0 8px 28px rgba(0,0,0,.35); padding:.35rem; z-index:30; }
+  .menu[hidden]{ display:none; }
+  .menu button{ display:block; width:100%; text-align:left; border:0; background:transparent; padding:.5rem .6rem; border-radius:6px; font-family:var(--font-serif); font-size:.92rem; }
+  .menu button:hover{ background:var(--accent-soft); }
+  .menu .sub{ display:block; font-family:var(--font-mono); font-size:.68rem; color:var(--ink-dim); margin-top:.15rem; }
+  [id]{ scroll-margin-top:100px; }
+  .tour-dim, .tour-block{ position:fixed; z-index:1000; }
+  .tour-dim{ background:rgba(6,10,18,.68); }
+  .tour-ring{ position:fixed; z-index:1001; border:2px solid var(--accent2); border-radius:8px; box-shadow:0 0 0 3px rgba(76,201,164,.28); pointer-events:none; }
+  .tour-ring.pulse{ animation:tourpulse 1.4s ease-in-out infinite; }
+  @keyframes tourpulse{ 50%{ box-shadow:0 0 0 8px rgba(76,201,164,.38); } }
+  @media (prefers-reduced-motion: reduce){ .tour-ring.pulse{ animation:none; } }
+  .tour-card{ position:fixed; z-index:1002; width:min(400px, calc(100vw - 16px)); max-height:calc(100vh - 16px); overflow:auto; background:var(--surface); color:var(--ink); border:1px solid var(--accent); border-radius:10px; box-shadow:0 14px 40px rgba(0,0,0,.5); padding:.7rem 1rem .85rem; font-size:.92rem; line-height:1.45; }
+  .tour-card h3{ margin:.15rem 0 .35rem; font-size:1.05rem; }
+  .tour-card p{ margin:.35rem 0; } .tour-card ul, .tour-card ol{ margin:.3rem 0; padding-left:1.15rem; } .tour-card li{ margin:.15rem 0; }
+  .tour-top{ display:flex; justify-content:space-between; align-items:center; font-family:var(--font-mono); font-size:.68rem; color:var(--ink-dim); }
+  .tour-top button{ border:0; background:transparent; font-size:.95rem; padding:0 .2rem; color:var(--ink-dim); }
+  .tour-bar{ height:3px; background:var(--grid); border-radius:2px; margin:.3rem 0 .35rem; } .tour-bar i{ display:block; height:100%; background:var(--accent); border-radius:2px; }
+  .tour-hint{ background:var(--accent2-soft); border-left:3px solid var(--accent2); padding:.35rem .6rem; border-radius:4px; margin:.5rem 0 .2rem; font-size:.86rem; }
+  .tour-nav{ display:flex; gap:.5rem; justify-content:flex-end; align-items:center; margin-top:.6rem; }
+  .tour-nav .primary{ background:var(--accent); color:var(--bg); border-color:var(--accent); font-weight:700; padding:.2rem .8rem; }
+  .tour-nav button:disabled{ opacity:.35; cursor:default; }
+  .tour-card code, .tour-card .k{ font-family:var(--font-mono); font-size:.82em; background:var(--surface-2); padding:0 .25rem; border-radius:3px; }
 </style>
 </head>
 <body>
 <header>
   <h1>Recognition workbench</h1>
+  <span class="dropdown"><button id="tutbtn" aria-haspopup="true" aria-expanded="false">Tutorials ▾</button><div id="tutmenu" class="menu" hidden></div></span>
   <label>R_ed's goal <select id="word"></select></label>
   <label>scenario <select id="scenario"></select></label>
   <span><button id="prev" title="left arrow">◀</button> <button id="next" title="right arrow">▶</button></span>
@@ -363,7 +390,8 @@ function loadWord(word, scenario) {
 }
 function setStep(t) { state.t = Math.max(0, Math.min(TL.length - 1, Math.round(t))); render(); }
 function setScenario(s) { loadWord(state.word, s); }
-window.calcViewer = { setStep, getStep: () => state.t, setWord: w => loadWord(w, state.scenario), setScenario, state };
+window.calcViewer = { setStep, getStep: () => state.t, setWord: w => loadWord(w, state.scenario), setScenario, state,
+  setGoal: w => { state.goal = w; render(); }, setVariant: v => { state.variant = v; $('variant').value = v; render(); } };
 
 /* ---------- controls ---------- */
 let timer = null;
@@ -382,7 +410,173 @@ $('word').onchange = e => loadWord(e.target.value, state.scenario);
 $('scenario').onchange = e => setScenario(e.target.value);
 for (const k of ['beta', 'lam', 'tau']) $(k).onchange = e => { const v = parseFloat(e.target.value); if (!isNaN(v)) { state[k] = v; render(); } };
 $('reset').onclick = () => { state.beta = META.beta; state.lam = META.lambda; state.tau = META.tau; for (const k of ['beta', 'lam', 'tau']) $(k).value = state[k]; render(); };
-window.addEventListener('keydown', e => { if (['INPUT', 'SELECT'].includes(e.target.tagName)) return; if (e.key === 'ArrowRight') setStep(state.t + 1); if (e.key === 'ArrowLeft') setStep(state.t - 1); });
+window.addEventListener('keydown', e => { if (['INPUT', 'SELECT'].includes(e.target.tagName) || document.body.classList.contains('tour-lock')) return; if (e.key === 'ArrowRight') setStep(state.t + 1); if (e.key === 'ArrowLeft') setStep(state.t - 1); });
+
+
+/* ---------- tutorials: guided overlays ("walk me") ---------- */
+const TUT_BASE = { word: 'MASTER', scenario: 'alone', t: 0, goal: 'MASTER', variant: 'eps3' };
+const TOUR_WALK = {
+  id: 'walk', title: 'Walk me through the experiment', blurb: 'The whole story, from the blocks to the helper robot. About 15 minutes.',
+  steps: [
+    { title: 'Welcome', html: `<p>This walk-through follows the experiment of the AAAI-17 paper <i>Integration of Planning with Recognition for Responsive Interaction Using Classical Planners</i>.</p>
+      <p><b>The story:</b> a robot, <b>R_ed</b>, is building a tower of lettered blocks. A second robot, <b>R_ing</b>, only <i>watches</i> her. R_ing does not know which word she is building. It has to work that out from her moves <i>while she is still working</i>, and then decide how to help.</p>
+      <p>You will see every plan, cost and formula behind that. I point at things on the page; click <b>Next</b> to go on. Sometimes I ask you to click something on the page itself. <span class="k">Esc</span> closes the tour, <b>◀ Back</b> goes back.</p>` },
+    { target: '#world', title: 'The world', html: `<p>Twelve blocks, each with a letter, stand in three towers. Read every tower <b>from top to bottom</b>: <span class="k">H-T-E-R</span>, <span class="k">L-S-M-O</span> and <span class="k">F-W-B-A</span>. This is the start state of the paper's Fig. 1.</p>
+      <p>A robot hand moves <b>one block at a time</b> and has only four kinds of move:</p>
+      <ul><li><code>pick-up(x)</code>: lift a block that lies on the table</li><li><code>put-down(x)</code>: put the held block on the table</li><li><code>unstack(x,y)</code>: lift block x off block y</li><li><code>stack(x,y)</code>: put the held block x on block y</li></ul>
+      <p>Every move <b>costs 1</b>, so the cost of a plan is simply its number of moves.</p>` },
+    { target: '#plan', title: "R_ed's plan", html: `<p>R_ed wants to build a tower that spells a word from top to bottom. Hers spells <b>MASTER</b>: M on A on S on T on E on R, with R on the table.</p>
+      <p>These are the 16 moves of her cheapest plan, found by a planner (Fast Downward). The paper assumes R_ed is <b>rational</b>: she does not waste moves, so she follows a cheapest plan.</p>
+      <p>Her goal is <b>hidden</b>: R_ing sees only her moves, never the word. (The ★ in the tables later marks her real goal; the observer does not know it.)</p>` },
+    { target: '#next', title: 'Try it: her first move', wait: () => state.t === 1, hint: 'Click the ▶ button in the top bar once: R_ed makes her first move.', auto: () => calcViewer.setStep(1),
+      html: `<p>Time to let R_ed work. Click the <b>▶</b> button.</p>` },
+    { target: '#world', title: 'The first observation', state: { t: 1 }, html: `<p>R_ed did <code>unstack(H,T)</code>: H is lifted off T and is in her hand. (In panel 2, that move is now highlighted.)</p>
+      <p>This move is one <b>observation</b>. From now on the observer's job is: <i>given what I have seen so far, which word is she building?</i></p>` },
+    { target: '#next', title: 'Watch her work', wait: () => state.t === 6, hint: 'Keep clicking ▶ until the step counter says 6 of 16 (five more clicks).', auto: () => calcViewer.setStep(6),
+      html: `<p>Let her do five more moves. Watch the hand and the tower on the left.</p>` },
+    { target: '#world', title: 'After six moves', state: { t: 6 }, html: `<p>H and L were put on the table (they were in her way), and S was lifted off M and put on T. The left tower is now <span class="k">S-T-E-R</span>.</p>
+      <p>Remember this moment: <b>S on T</b> will turn out to be a strong clue.</p>` },
+    { target: '#goaltable', title: 'The observer’s problem', state: { t: 0 }, html: `<p>Now we are the observer. Which of 12 words is R_ed building? Each row is one <b>candidate goal</b> G.</p>
+      <ul><li><b>c*(G)</b>: the cost of the cheapest plan that builds that word from the start. HER needs only 6 moves, MASTER 16, BOTHER 22.</li>
+      <li><b>P(G|O,t)</b> (last column): the observer's belief that G is the goal after seeing t moves.</li></ul>
+      <p>At step 0 nothing has been seen, so all 12 words are equally likely: 1/12 = <b>0.083</b>.</p>` },
+    { target: '#next', title: 'The first observation', wait: () => state.t === 1, hint: 'Click ▶ once and watch the last column of the table.', auto: () => calcViewer.setStep(1),
+      html: `<p>R_ed makes her first move again. Does the belief change?</p>` },
+    { target: '#goaltable', title: 'Nothing changed', state: { t: 1 }, html: `<p>All twelve words are still at 0.083. That makes sense: in <b>every</b> word H has to leave T at some point, so seeing it happen tells the observer nothing yet.</p>` },
+    { target: '#detail', title: 'The two questions', state: { t: 1, goal: 'HER' }, html: `<p>Panel 4 shows the reasoning for one goal, here HER. For every goal the planner is asked <b>two questions</b>:</p>
+      <ul><li><b>G+O</b>: reach the goal <i>and</i> perform the moves I observed (HER: 6 moves).</li>
+      <li><b>G+Ō</b>: reach the goal <i>without</i> performing them. For HER the planner says: <b>no plan exists</b> (cost ∞), because H sits on T and must be unstacked.</li></ul>
+      <p>If avoiding the observed move is impossible, the move says nothing against HER: its likelihood is exactly 1. The same is true for every word.</p>` },
+    { target: '#goaltable', title: 'After six moves', state: { t: 6, goal: 'HER' }, html: `<p>Now we jump to step 6, after R_ed put S on T. The table has changed:</p>
+      <ul><li><b>MASTER, FASTER and FOSTER</b> lead with 0.267 each,</li><li>OTHER, BOTHER and MOTHER follow with 0.064,</li><li>and <b>HER has dropped to 0.002</b>.</li></ul><p>Why? We follow one goal at a time.</p>` },
+    { target: '#detail', title: 'Why HER drops', state: { goal: 'HER' }, html: `<p>For <b>HER</b> the two questions now differ:</p>
+      <ul><li><b>G+O costs 10</b>: building HER <i>and</i> having done the six observed moves takes 10 moves in total. Several observed moves (like putting S on T) were a detour for HER.</li>
+      <li><b>G+Ō costs 6</b>: the cheapest way to build HER, ignoring what R_ed did.</li></ul>
+      <p>The gap is 6 − 10 = −4. A rational agent building HER would not have made these moves, so HER is unlikely.</p>` },
+    { target: '#detail', title: 'Why MASTER stays', state: { goal: 'MASTER' }, html: `<p>Now <b>MASTER</b>: both questions give <b>16</b>. The observed moves are part of a cheapest plan for MASTER, so following them costs nothing extra: the gap is 0.</p>
+      <p>FASTER and FOSTER behave the same way (their observed moves also fit a cheapest plan), which is why the three tie.</p>` },
+    { target: '#detail', title: 'From a cost gap to a probability', state: { goal: 'HER' }, html: `<p>The two costs become a probability with a <b>Boltzmann</b> weight: every extra move multiplies the weight by e<sup>−β</sup>.</p>
+      <p>For HER (β = 1): e<sup>−10</sup> = 4.5e-5 for G+O and e<sup>−6</sup> = 2.5e-3 for G+Ō, so</p>
+      <p><b>P(O|G)</b> = 4.5e-5 / (4.5e-5 + 2.5e-3) = <b>0.018</b>.</p>
+      <p>It answers: <i>if HER were her goal, how likely is it that she did exactly this?</i> Equal costs give 0.5 (as for MASTER). β says how strictly we expect rational behavior; you can change it in the top bar.</p>` },
+    { target: '#goaltable', title: 'From likelihood to belief', html: `<p>The likelihood is not yet the belief. Two more ingredients:</p>
+      <p style="text-align:center"><b>P(G|O,t) = P(O|G) · P(t′|G) / Z</b></p>
+      <p>The <b>prior</b> P(t′|G) comes next. <b>Z</b> adds the 12 scores together so that the beliefs sum to 1: look at the bottom row of the table.</p>` },
+    { target: '#detail', title: 'The prior and foresight', state: { goal: 'HER' }, html: `<p>The prior asks a different question: <i>how likely is it that a plan for this goal is still running after this much effort?</i> It uses survival analysis, with a foresight of ε = 3 moves: t′ = 6 + 3 = <b>9</b>.</p>
+      <ul><li>HER's cheapest plan has only 6 moves. After 9 moves a HER plan would very probably be over: P(t′|G) = <b>0.165</b>.</li><li>MASTER needs 16 moves, so after 9 it surely cannot be over: P(t′|G) = <b>1</b>.</li></ul>
+      <p>This is the paper's key addition: cheap goals lose weight early, while long tasks stay alive. (The extra table below shows each term of the calculation.)</p>` },
+    { target: '#necessity', title: 'What is needed, whatever the word', state: { goal: 'MASTER' }, html: `<p>R_ing needs more than probabilities: it needs <b>facts to work toward</b>. The <b>necessity</b> N(p) of a condition p (like “A on S”) is the total belief of all goals that need p.</p>
+      <p>“S on T” is needed by MASTER, FASTER and FOSTER: N ≈ 0.80. Conditions with N ≥ τ (0.3) form the estimated goal <b>Ĝ<sub>Red</sub></b>: here E on R, R on the table, T on E, S on T and <b>A on S</b>.</p>
+      <p>“A on S” (N = 0.53) is the only one not yet true: that is where a helper can contribute. And no two conditions conflict.</p>` },
+    { target: '#necessity', title: 'When R_ing cannot help yet', state: { t: 2 }, html: `<p>Compare with step 2, before the clues were clear. “H on E” (words ending in HER) and “T on E” (words ending in TER) each have N = 0.5, and “T on H” has 0.42. All pass the threshold, but they cannot all be true (two blocks cannot sit directly on E, and T cannot be both on E and on H), so Ĝ<sub>Red</sub> contains <b>conflicts</b> and has no solution: R_ing cannot help yet.</p>
+      <p>By step 6 the conflicts are gone. That is the moment R_ing joins.</p>` },
+    { target: '#helperpanel', title: 'R_ing joins: the helper plan', state: { scenario: 'assistive', t: 6 }, html: `<p>R_ing joins after R_ed's 6th move and plans for Ĝ<sub>Red</sub>. Four planner runs:</p>
+      <ul><li><b>A</b>: R_ed alone to Ĝ<sub>Red</sub>: 8 moves.</li><li><b>B</b>: both arms together: 4 steps (R_ing's part of it is π<sub>Ring</sub>).</li><li><b>C</b>: R_ed alone to her real goal: 10 moves.</li><li><b>D</b>: both arms to her real goal, with R_ing's moves fixed to π<sub>Ring</sub>: 6 steps.</li></ul>
+      <p><b>Helpfulness H = C − D = 10 − 6 = 4</b> steps saved. The paper reports 4 as well.</p>` },
+    { target: '#next', title: 'Watch them work together', wait: () => state.t === 7, hint: 'Click ▶ once: the first joint step.', auto: () => calcViewer.setStep(7),
+      html: `<p>Now both robots act. Click <b>▶</b>.</p>` },
+    { target: '#world', title: 'Two hands at once', state: { t: 7 }, html: `<p>In a joint step both arms move at the same time. Here R_ed (blue) lifted F and R_ing (green) lifted W: <b>two stacked blocks lifted together</b> (F off W by R_ed, W off B by R_ing). The paper allows such pair lifts, handovers, and moves on different blocks in parallel.</p>` },
+    { target: '#next', title: 'To the end', wait: () => state.t === 12, hint: 'Keep clicking ▶ until the counter says 12 of 12 (five more clicks).', auto: () => calcViewer.setStep(12),
+      html: `<p>Let them finish the tower.</p>` },
+    { target: '#world', title: 'The result', state: { t: 12 }, html: `<p>MASTER stands: M-A-S-T-E-R. R_ing's four moves were: lift W off B, put W on L, pick up A, put A on S. Meanwhile R_ed moved F and B out of the way, and finished by putting M on top.</p>
+      <p>R_ed alone would have needed 10 more steps; together they needed 6.</p>` },
+    { title: 'That is the whole mechanism', html: `<ol><li>R_ing <b>observes</b> R_ed's moves.</li><li>For every candidate goal it asks the planner two questions (with or without the observed moves) and takes the <b>cost gap</b>.</li><li>The gap gives the <b>likelihood</b>; the <b>prior</b> and foresight say how long each plan should still be running; together: the <b>belief</b>.</li><li>The belief gives the <b>necessary facts</b> Ĝ<sub>Red</sub>.</li><li>R_ing <b>plans</b> toward Ĝ<sub>Red</sub> and helps; <b>H</b> measures how much.</li></ol>
+      <p><b>Things to try:</b> choose another goal for R_ed in the top bar (with FOSTER the helper guesses wrong and H = −6); the <i>scenario</i> menu (independent and adversarial interaction); change β, λ, τ and ε and watch the numbers move.</p>` },
+  ]
+};
+const TUTORIALS = [TOUR_WALK];
+let TOUR = null;                                           // the running tour, or null
+
+function tourEffective(tut) {                              // the page state each step needs (inherited from the step before)
+  const eff = []; let cur = { ...TUT_BASE };
+  tut.steps.forEach(s => { cur = { ...cur, ...(s.state || {}) }; eff.push({ ...cur }); });
+  return eff;
+}
+function applyTourState(st) {
+  stopPlay();
+  if (state.word !== st.word || state.scenario !== st.scenario) loadWord(st.word, st.scenario);
+  state.beta = META.beta; state.lam = META.lambda; state.tau = META.tau;
+  for (const k of ['beta', 'lam', 'tau']) $(k).value = state[k];
+  state.variant = st.variant; $('variant').value = st.variant; state.goal = st.goal;
+  setStep(st.t);
+}
+function tourDom() {
+  if ($('tour')) return;
+  const d = document.createElement('div'); d.id = 'tour';
+  d.innerHTML = '<div class="tour-dim" id="td1"></div><div class="tour-dim" id="td2"></div><div class="tour-dim" id="td3"></div><div class="tour-dim" id="td4"></div><div class="tour-block" id="tblock"></div><div class="tour-ring" id="tring"></div><div class="tour-card" id="tcard" role="dialog" aria-live="polite"></div>';
+  document.body.appendChild(d);
+}
+function tourStart(id) {
+  const tut = TUTORIALS.find(t => t.id === id); if (!tut) return;
+  tourEnd(); tourDom();
+  TOUR = { tut, eff: tourEffective(tut), i: 0, timer: null };
+  window.addEventListener('resize', tourLayout); window.addEventListener('scroll', tourLayout, true); window.addEventListener('keydown', tourKey, true);
+  window.addEventListener('stepchange', tourCheckWait);
+  tourShow(0);
+}
+function tourEnd() {
+  if (!TOUR) return;
+  clearTimeout(TOUR.timer); TOUR = null;
+  window.removeEventListener('resize', tourLayout); window.removeEventListener('scroll', tourLayout, true); window.removeEventListener('keydown', tourKey, true);
+  window.removeEventListener('stepchange', tourCheckWait);
+  const d = $('tour'); if (d) d.remove();
+  document.body.classList.remove('tour-lock');
+}
+function tourShow(i) {
+  const T = TOUR, s = T.tut.steps[i]; clearTimeout(T.timer); T.i = i;
+  applyTourState(T.eff[i]);
+  document.body.classList.toggle('tour-lock', !s.wait);     // while the user is asked to click, the page keys stay alive
+  const n = T.tut.steps.length, last = i === n - 1;
+  $('tcard').innerHTML = `<div class="tour-top"><span>${T.tut.title} · step ${i + 1} of ${n}</span><button id="tx" title="Close (Esc)" aria-label="Close the tour">✕</button></div><div class="tour-bar"><i style="width:${Math.round((i + 1) / n * 100)}%"></i></div>
+    <h3>${s.title}</h3><div>${s.html}</div>${s.wait ? `<div class="tour-hint">👉 ${s.hint}</div>` : ''}
+    <div class="tour-nav"><button id="tback" ${i === 0 ? 'disabled' : ''}>◀ Back</button>${s.wait ? '<button id="tauto" title="Do the click for me">do it for me</button>' : ''}<button class="primary" id="tnext" ${s.wait ? 'disabled' : ''}>${last ? 'Finish' : 'Next ▶'}</button></div>`;
+  $('tx').onclick = tourEnd; $('tback').onclick = () => tourGo(i - 1);
+  $('tnext').onclick = () => last ? tourEnd() : tourGo(i + 1);
+  if (s.wait) $('tauto').onclick = () => { s.auto(); };
+  const el = s.target && document.querySelector(s.target);
+  if (el) { const r = el.getBoundingClientRect(); el.scrollIntoView({ block: r.height > innerHeight * 0.6 ? 'start' : 'center' }); }
+  requestAnimationFrame(() => requestAnimationFrame(() => { tourLayout(); if (!s.wait) $('tnext').focus({ preventScroll: true }); }));
+  if (s.wait) tourCheckWait();
+}
+function tourGo(i) { if (TOUR && i >= 0 && i < TOUR.tut.steps.length) tourShow(i); }
+function tourCheckWait() {
+  if (!TOUR) return; const s = TOUR.tut.steps[TOUR.i];
+  if (s.wait && s.wait() && !TOUR.timer) TOUR.timer = setTimeout(() => { if (TOUR) { TOUR.timer = null; tourGo(TOUR.i + 1); } }, 1000);   // let the animation play first
+}
+function tourKey(e) {
+  if (!TOUR) return; const s = TOUR.tut.steps[TOUR.i];
+  if (e.key === 'Escape') { tourEnd(); return; }
+  if (s.wait || ['INPUT', 'SELECT'].includes(e.target.tagName)) return;
+  if (e.key === 'ArrowRight' || e.key === 'Enter') { e.preventDefault(); e.stopImmediatePropagation(); $('tnext').click(); }
+  else if (e.key === 'ArrowLeft') { e.preventDefault(); e.stopImmediatePropagation(); tourGo(TOUR.i - 1); }
+}
+function tourLayout() {
+  if (!TOUR) return; const s = TOUR.tut.steps[TOUR.i], vw = innerWidth, vh = innerHeight, card = $('tcard'), set = (id, l, t, w, h) => Object.assign($(id).style, { left: l + 'px', top: t + 'px', width: Math.max(0, w) + 'px', height: Math.max(0, h) + 'px' });
+  const el = s.target && document.querySelector(s.target); let rc = null;
+  if (el) { const r = el.getBoundingClientRect(), p = 6; rc = { l: Math.max(r.left - p, 0), t: Math.max(r.top - p, 0), r: Math.min(r.right + p, vw), b: Math.min(r.bottom + p, vh) }; }
+  if (rc) {
+    set('td1', 0, 0, vw, rc.t); set('td2', 0, rc.b, vw, vh - rc.b); set('td3', 0, rc.t, rc.l, rc.b - rc.t); set('td4', rc.r, rc.t, vw - rc.r, rc.b - rc.t);
+    set('tring', rc.l, rc.t, rc.r - rc.l, rc.b - rc.t); $('tring').classList.toggle('pulse', !!s.wait);
+    set('tblock', rc.l, rc.t, s.wait ? 0 : rc.r - rc.l, s.wait ? 0 : rc.b - rc.t);                   // no clicks inside the hole unless the user must click
+  } else { set('td1', 0, 0, vw, vh); set('td2', 0, 0, 0, 0); set('td3', 0, 0, 0, 0); set('td4', 0, 0, 0, 0); set('tring', 0, 0, 0, 0); set('tblock', 0, 0, 0, 0); }
+  const cw = card.offsetWidth, ch = card.offsetHeight, m = 12; let x, y;
+  if (!rc) { x = (vw - cw) / 2; y = Math.max(8, (vh - ch) / 2); }
+  else if (rc.b + m + ch <= vh - 8) { x = rc.l; y = rc.b + m; }                                       // below the target
+  else if (rc.t - m - ch >= 8) { x = rc.l; y = rc.t - m - ch; }                                       // above
+  else if (rc.r + m + cw <= vw - 8) { x = rc.r + m; y = Math.max(8, rc.t); }                           // to the right
+  else if (rc.l - m - cw >= 8) { x = rc.l - m - cw; y = Math.max(8, rc.t); }                           // to the left
+  else { x = rc.l + 12; y = Math.min(rc.t + 12, vh - ch - 8); }                                       // inside a very large target
+  card.style.left = Math.min(Math.max(x, 8), vw - cw - 8) + 'px'; card.style.top = Math.min(Math.max(y, 8), vh - ch - 8) + 'px';
+}
+/* the Tutorials menu */
+{
+  const menu = $('tutmenu'), btn = $('tutbtn');
+  menu.innerHTML = TUTORIALS.map((t, k) => `<button data-id="${t.id}">${k + 1} · ${t.title}<span class="sub">${t.blurb}</span></button>`).join('');
+  btn.onclick = e => { e.stopPropagation(); menu.hidden = !menu.hidden; btn.setAttribute('aria-expanded', String(!menu.hidden)); };
+  menu.querySelectorAll('button').forEach(b => b.onclick = () => { menu.hidden = true; tourStart(b.dataset.id); });
+  document.addEventListener('click', () => { menu.hidden = true; });
+}
+Object.assign(window.calcViewer, { startTutorial: tourStart, tourGo, endTutorial: tourEnd });
 
 /* ---------- start, and the self-check: the numbers computed here must equal the ones Python stored ---------- */
 DATA.order.forEach(w => $('word').add(new Option(`${w}  (${DATA.words[w].meta.observed_plan.length} actions)`, w)));
