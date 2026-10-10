@@ -110,6 +110,7 @@
   .explain dl{ margin:0; padding:.1rem .9rem .7rem; display:grid; grid-template-columns:minmax(7rem,max-content) minmax(0,1fr); gap:.4rem 1rem; font-size:.86rem; line-height:1.4; }
   .explain dt{ font-family:var(--font-mono); font-size:.8rem; color:var(--ink); } .explain dd{ margin:0; color:var(--ink-dim); }
   @media (max-width:700px){ .explain dl{ grid-template-columns:minmax(0,1fr); gap:.1rem; } .explain dd{ margin-bottom:.55rem; } }
+  th .sub{ display:block; font-family:var(--font-serif); font-size:.64rem; font-weight:400; color:var(--ink-faint); letter-spacing:0; }
 </style>
 </head>
 <body>
@@ -369,7 +370,12 @@ function render() {
 
   const maxPost = Math.max(...META.words.map(w => R.goals[w].post));
   $('tablenote').innerHTML = 'Click a row to see that goal\'s plans and calculation in panel 4.';
-  let h = '<tr><th>goal</th><th class="num">c*(G)</th><th class="num">c(G+O)</th><th class="num">c(G+Ō)</th><th class="num">gap</th><th class="num">P(O|G)</th><th class="num">t′</th><th class="num">P(t′|G)</th><th class="num">P(O|G)·P(t′|G)</th><th class="num">P(G|O,t)</th><th></th></tr>';
+  const COLS = [['goal', 'candidate', 'A candidate word. ★ marks the real, hidden goal.', ''], ['c*(G)', 'optimal cost', 'Cheapest possible plan for G from the start.', 'num'],
+    ['c(G+O)', 'with moves', 'Cheapest plan that reaches G and performs the whole observed sequence in order.', 'num'], ['c(G+Ō)', 'without moves', 'Cheapest plan that reaches G without performing the whole observed sequence in order. ∞: none exists.', 'num'],
+    ['gap', 'difference', 'c(G+Ō) − c(G+O). Negative: the observed moves are a detour for G (evidence against). 0: no evidence. ∞: unavoidable.', 'num'], ['P(O|G)', 'likelihood', 'How expected the observed moves are if G were the goal, from the gap.', 'num'],
+    ['t′', 'look-ahead', 't′ = t + ε: the time at which the prior is evaluated.', 'num'], ['P(t′|G)', 'prior', 'Probability that a plan for G is still running at time t′ (survival).', 'num'],
+    ['P(O|G)·P(t′|G)', 'score', 'Likelihood times prior. Not yet a probability.', 'num'], ['P(G|O,t)', 'posterior', 'The belief in G: the score divided by Z, so that all 12 beliefs add up to 1.', 'num']];
+  let h = '<tr>' + COLS.map(c => `<th class="${c[3]}" title="${c[2]}">${c[0]}<span class="sub">${c[1]}</span></th>`).join('') + '<th></th></tr>';
   for (const w of META.words) {
     const r = R.goals[w], gap = (r.cO === null || r.cN === null) ? '∞' : r.cN - r.cO;
     h += `<tr class="click ${w === state.goal ? 'sel' : ''}" data-w="${w}"><td class="${w === META.hidden_goal ? 'hidden-goal' : ''}">${w}${w === META.hidden_goal ? ' ★' : ''}</td><td class="num">${r.c}</td><td class="num">${f(r.cO, 0)}</td><td class="num">${f(r.cN, 0)}</td><td class="num">${gap}</td><td class="num">${f(r.like)}</td><td class="num">${r.prior.used ? r.prior.tp : '–'}</td><td class="num">${f(r.prior.surv)}</td><td class="num">${f(r.score)}</td><td class="num"><b>${f(r.post)}</b></td><td><span class="bar" style="width:${Math.round(r.post / (maxPost || 1) * 90)}px"></span></td></tr>`;
