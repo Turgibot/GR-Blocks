@@ -37,6 +37,12 @@ for path in sorted(OUT.glob("trace_*.json")):
     entry["scenarios"] = json.loads(scen.read_text())["scenarios"] if scen.exists() else None
     ref = OUT / f"reference_{word}.json"
     entry["reference"] = json.loads(ref.read_text()) if ref.exists() else None
+    expo = OUT / f"exposure_{word}.json"
+    if expo.exists():                                                # the extension page (safe-exposure.html): numbers for the note in panel 6
+        e = json.loads(expo.read_text())
+        entry["exposure"] = {"completion": e["completion"], "paper": e["paper"]["joint"], "alone": e["paper"]["alone"]}
+    else:
+        entry["exposure"] = None
     words[word] = entry
 assert DEFAULT in words, "out/trace_MASTER.json is missing"
 order = [w for w in words[DEFAULT]["meta"]["words"] if w in words]

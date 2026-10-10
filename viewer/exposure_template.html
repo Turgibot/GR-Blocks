@@ -28,6 +28,8 @@
   button{ font-family:var(--font-mono); font-size:.8rem; background:var(--surface-2); color:var(--ink); border:1px solid var(--grid); border-radius:4px; padding:.15rem .6rem; cursor:pointer; }
   button:hover{ border-color:var(--accent); }
   a{ color:var(--accent); }
+  a.btnlink{ font-family:var(--font-mono); font-size:.8rem; font-weight:700; text-decoration:none; background:var(--accent2-soft); color:var(--accent2); border:1px solid var(--accent2); border-radius:4px; padding:.15rem .6rem; }
+  a.btnlink:hover{ background:var(--accent2); color:var(--bg); }
   main{ max-width:1100px; margin:0 auto; padding:1rem; }
   .panel{ background:var(--surface); border:1px solid var(--grid); border-radius:8px; padding:.85rem 1rem; margin-bottom:1rem; }
   .small{ font-size:.82rem; color:var(--ink-dim); }
@@ -85,6 +87,7 @@
   <label>step <input type="range" id="slider" min="0" max="0" value="0"> <b id="tlabel"></b></label>
   <span id="playctl"><button id="play">▶ play</button>
   <label style="display:inline-flex">speed <select id="speed"><option value="3200">slow</option><option value="1800" selected>normal</option><option value="900">fast</option></select></label></span>
+  <a id="backlink" class="btnlink" style="margin-left:auto" href="recognition-calculations.html">← the paper's workbench</a>
 </header>
 <main>
   <div class="panel text">/*TEXT_HTML*/</div>
@@ -273,6 +276,7 @@ let timer = null;
 function stopPlay() { if (timer) { clearInterval(timer); timer = null; } $('play').textContent = '▶ play'; }
 function loadWord(w) {
   stopPlay(); state.word = w; D = DATA.words[w]; D.blocks = DATA.blocks; D.live_of = DATA.n_goals;
+  $('backlink').href = 'recognition-calculations.html#word=' + w + '&scenario=assistive';
   TL = buildTL(); LAYOUT = computeLayout(TL); $('world').innerHTML = ''; W3.shown = null; setStep(0);
 }
 $('word').innerHTML = DATA.order.map(w => `<option>${w}</option>`).join('');

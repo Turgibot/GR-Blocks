@@ -26,6 +26,7 @@
   input[type=number], select{ font-family:var(--font-mono); font-size:.78rem; background:var(--bg); color:var(--ink); border:1px solid var(--grid); border-radius:4px; padding:.15rem .3rem; }
   input[type=number]{ width:4.4rem; }
   input[type=range]{ width:min(24vw,220px); }
+  header input[type=range]{ width:min(18vw,170px); }
   button{ font-family:var(--font-mono); font-size:.8rem; background:var(--surface-2); color:var(--ink); border:1px solid var(--grid); border-radius:4px; padding:.15rem .6rem; cursor:pointer; }
   button:hover{ border-color:var(--accent); }
   main{ --edge:max(1rem, calc((100vw - 1500px) / 2)); padding:1rem var(--edge); margin:0; transition:padding .8s cubic-bezier(.4,0,.2,1); }
@@ -54,6 +55,11 @@
   .scroll{ overflow-x:auto; }
   .banner{ background:var(--accent2-soft); border-left:3px solid var(--accent2); padding:.5rem .8rem; border-radius:4px; margin-bottom:1rem; font-size:.9rem; }
   footer a{ color:var(--accent); }
+  footer{ transition:padding .8s cubic-bezier(.4,0,.2,1); }
+  body.docked footer{ padding-left:calc(33.333vw + 1rem); padding-right:var(--pad); }
+  @media (prefers-reduced-motion: reduce){ footer{ transition:none; } }
+  a.btnlink{ font-family:var(--font-mono); font-size:.8rem; font-weight:700; text-decoration:none; background:var(--accent2-soft); color:var(--accent2); border:1px solid var(--accent2); border-radius:4px; padding:.15rem .6rem; }
+  a.btnlink:hover{ background:var(--accent2); color:var(--bg); }
   footer{ padding:.5rem 1rem 1.5rem; font-family:var(--font-mono); font-size:.72rem; color:var(--ink-dim); text-align:center; }
   svg text{ font-family:var(--font-mono); fill:currentColor; }
   .blk rect{ transition:fill .3s, stroke .3s; }
@@ -130,6 +136,7 @@
   <label>λ <input type="number" id="lam" step="0.1" min="0"></label>
   <label>τ <input type="number" id="tau" step="0.05" min="0" max="1"></label>
   <button id="reset">reset to the trace values</button></span>
+  <a id="extlink" class="btnlink" style="margin-left:auto" href="safe-exposure.html" title="An extension that is not part of the paper: R_ing acts before recognition has settled, with moves that are harmless for every goal still alive">Extension: safe exposure ↗</a>
 </header>
 <div id="wslot"><section class="worldrow">
   <div class="panel"><h2>1 · The world</h2><div class="what">The blocks, as the robots move them. Read each tower from top to bottom. The counter shows what has been spent so far (every move costs 1).</div><div id="costbar" class="costbar"></div><div id="world"></div><div id="lastaction" class="small"></div><div class="legend" id="legend"></div></div>
@@ -189,7 +196,7 @@
   <div class="panel" id="helperpanel"><h2>6 · R_ing helps (assistive interaction)</h2><div id="helper"></div></div>
 </main>
 <footer id="selfcheck"></footer>
-<footer id="paperref" style="max-width:900px;margin:0 auto;text-align:left;line-height:1.5"><b>Reference.</b> Freedman, R. G., and Zilberstein, S. 2017. Integration of Planning with Recognition for Responsive Interaction Using Classical Planners. In <i>Proceedings of the Thirty-First AAAI Conference on Artificial Intelligence (AAAI-17)</i>. AAAI Press. <a href="Integration%20of%20Planning%20with%20Recognition%20for%20Responsive%20Interaction%20Using%20Classical%20Planners.pdf">PDF</a></footer>
+<footer id="paperref" style="text-align:left;line-height:1.5"><b>Reference.</b> Freedman, R. G., and Zilberstein, S. 2017. Integration of Planning with Recognition for Responsive Interaction Using Classical Planners. In <i>Proceedings of the Thirty-First AAAI Conference on Artificial Intelligence (AAAI-17)</i>. AAAI Press. <a href="Integration%20of%20Planning%20with%20Recognition%20for%20Responsive%20Interaction%20Using%20Classical%20Planners.pdf">PDF</a></footer>
 
 <script>
 const DATA = /*DATA_JSON*/null;
@@ -197,7 +204,7 @@ const $ = id => document.getElementById(id);
 const f = (x, d = 3) => (x === null || x === undefined) ? '∞' : (Math.abs(x) < 1e-3 && x !== 0 ? x.toExponential(1) : x.toFixed(d));
 const ACT = a => a.replace(/^(\S+) (.*)$/, (m, n, r) => n + '(' + r.split(' ').join(',') + ')');
 const movedBlock = a => a.split(' ')[1];
-let META, STEPS, HELPER, SCEN = {}, TL, LAYOUT, REF = null;
+let META, STEPS, HELPER, SCEN = {}, TL, LAYOUT, REF = null, EXPO = null;
 const state = { word: null, scenario: 'alone', t: 0, variant: 'eps3', beta: 1, lam: 1, tau: 0.3, goal: null };
 
 /* ---------- the statistics, recomputed here from the stored planner costs ---------- */
@@ -482,13 +489,15 @@ function renderHelper(e) {
   h += `<p class="calc">H(π<sub>Ring</sub>) = C − D = ${C.cost} − ${D.cost} = <b>${H.H}</b>${paper ? ' &nbsp; <span class="tag ok">the paper reports H = 4</span>' : ''}</p>`;
   h += `<p class="small">π<sub>Ring</sub> (R_ing's part of the plan in B): ${pi}</p>`;
   h += `<div class="twocol"><div><b>B · joint plan to Ĝ<sub>Red</sub></b>${jointTable(B, 0)}</div><div><b>D · the plan that is carried out</b> <span class="small">(R_ed's best response while R_ing follows π<sub>Ring</sub>)</span>${jointTable(D, e.phase === 'help' ? e.k : 0)}</div></div>`;
+  if (EXPO) h += `<div class="banner" style="margin:.8rem 0 0">R_ing waited for ${H.t_join} of R_ed's actions here, and the word is finished after <b>${EXPO.paper}</b> steps (R_ed alone: ${EXPO.alone}). Could she have helped earlier, with moves that are harmless for every goal still alive? With such <i>safe exposure</i> the same word is finished after <b>${EXPO.completion}</b> steps. <a href="safe-exposure.html#word=${state.word}">See the extension (it is not part of the paper) ↗</a></div>`;
   $('helper').innerHTML = h;
 }
 
 /* ---------- loading a goal word and a scenario ---------- */
 function loadWord(word, scenario) {
   const D = DATA.words[word];
-  state.word = word; META = D.meta; STEPS = D.steps; HELPER = D.helper || null; SCEN = (HELPER && D.scenarios) || {}; REF = D.reference || null;
+  state.word = word; META = D.meta; STEPS = D.steps; HELPER = D.helper || null; SCEN = (HELPER && D.scenarios) || {}; REF = D.reference || null; EXPO = D.exposure || null;
+  $('extlink').href = 'safe-exposure.html' + (EXPO ? '#word=' + word : '');
   const sc = $('scenario'); sc.innerHTML = '';
   sc.add(new Option('R_ed alone', 'alone'));
   if (REF) sc.add(new Option('Shared-goal collaboration', 'both_start'));
@@ -864,6 +873,8 @@ for (const w of DATA.order) {
 }
 $('selfcheck').innerHTML = `Self-check against the Python traces (${DATA.order.length} goal words, ${nChecks} step/belief combinations): largest difference in P(G|O,t) = ${worst.toExponential(1)}, in N(p|O) = ${worstN.toExponential(1)} ${worst < 1e-9 && worstN < 1e-9 ? '✓' : '✗ MISMATCH'}<br>Arrow keys step through time · calcViewer.setStep(t) / setWord(w) / setScenario(s) drive the page from outside`;
 loadWord(DATA.default, 'alone');
+{ const hw = /word=([A-Z]+)/.exec(location.hash), hs = /scenario=(\w+)/.exec(location.hash);        // recognition-calculations.html#word=FOSTER&scenario=assistive
+  if (hw && DATA.words[hw[1]]) { $('word').value = hw[1]; loadWord(hw[1], hs ? hs[1] : 'alone'); } }
 </script>
 </body>
 </html>
