@@ -53,6 +53,7 @@
   .calc b{ color:var(--accent); }
   .scroll{ overflow-x:auto; }
   .banner{ background:var(--accent2-soft); border-left:3px solid var(--accent2); padding:.5rem .8rem; border-radius:4px; margin-bottom:1rem; font-size:.9rem; }
+  footer a{ color:var(--accent); }
   footer{ padding:.5rem 1rem 1.5rem; font-family:var(--font-mono); font-size:.72rem; color:var(--ink-dim); text-align:center; }
   svg text{ font-family:var(--font-mono); fill:currentColor; }
   .blk rect{ transition:fill .3s, stroke .3s; }
@@ -116,6 +117,7 @@
 <body>
 <header>
   <h1>Recognition workbench</h1>
+  <span class="small" style="font-family:var(--font-mono);font-size:.68rem;color:var(--ink-dim)">based on Freedman &amp; Zilberstein (AAAI-17) · <a href="Integration%20of%20Planning%20with%20Recognition%20for%20Responsive%20Interaction%20Using%20Classical%20Planners.pdf" style="color:var(--accent)">paper (PDF)</a></span>
   <span class="dropdown"><button id="tutbtn" aria-haspopup="true" aria-expanded="false">Tutorials ▾</button><div id="tutmenu" class="menu" hidden></div></span>
   <label>R_ed's goal <select id="word"></select></label>
   <label>scenario <select id="scenario"></select></label>
@@ -187,6 +189,7 @@
   <div class="panel" id="helperpanel"><h2>6 · R_ing helps (assistive interaction)</h2><div id="helper"></div></div>
 </main>
 <footer id="selfcheck"></footer>
+<footer id="paperref" style="max-width:900px;margin:0 auto;text-align:left;line-height:1.5"><b>Reference.</b> Freedman, R. G., and Zilberstein, S. 2017. Integration of Planning with Recognition for Responsive Interaction Using Classical Planners. In <i>Proceedings of the Thirty-First AAAI Conference on Artificial Intelligence (AAAI-17)</i>. AAAI Press. <a href="Integration%20of%20Planning%20with%20Recognition%20for%20Responsive%20Interaction%20Using%20Classical%20Planners.pdf">PDF</a></footer>
 
 <script>
 const DATA = /*DATA_JSON*/null;
