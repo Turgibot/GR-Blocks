@@ -14,6 +14,25 @@ In the workbench choose R_ed's goal word and a scenario (R_ed alone, assistive, 
 step with the arrow keys. β, λ, τ and the foresight ε can be changed live; the page recomputes everything and checks
 its own arithmetic against the Python numbers (see the line at the bottom).
 
+## Extension: safe exposure (not part of the paper)
+
+Branch `improvements`. The paper's R_ing joins only once the recognized goals have no conflict; until then she is idle.
+Safe exposure lets her use that time on moves that are harmless for every goal still alive in R_ed's belief (take a
+block off a tower and put it on the table). Recognition is unchanged; only R_ing's execution policy differs.
+The extension has its own page and does not touch the workbench.
+
+| File | What it is |
+|---|---|
+| `safe-exposure.html` | The page: the write-up, the animated simulation for 9 goal words, and a panel with the safety test at every step. Open `safe-exposure.html#word=MASTER&step=3` to land on a word and step. |
+| `docs/safe_exposure.md` | The write-up in academic style (also shown at the top of the page). |
+| `scripts/make_exposure.py WORD` | Runs the procedure and writes `out/exposure_WORD.json` (needs `out/trace_WORD.json` and `out/helper_WORD.json`). |
+| `scripts/build_exposure_page.py`, `viewer/exposure_template.html` | Build the page from `out/exposure_*.json` and the write-up. |
+| `scripts/safe_exposure.py`, `scripts/exposure_experiment.py` | The first prototypes: the syntactic test only, and the experiment that prints the comparison. |
+
+Result (steps until the word is built, R_ed alone / paper / safe exposure): MASTER 16 / 12 / 10, FOSTER 12 / 18 / 10,
+BOTHER 22 / 20 / 14, MOTHER 18 / 16 / 16. Never slower than the paper's way in the nine words tested; limits are listed
+in the write-up (the join time is still the paper's, and safety is checked on goal facts only, not with the planner).
+
 ## How the numbers are made
 
 Fast Downward (A* with LM-cut) is the planner. It is built into `third_party/` (not tracked by git) and the Python
